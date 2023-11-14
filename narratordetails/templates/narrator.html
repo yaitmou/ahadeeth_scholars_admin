@@ -1,0 +1,127 @@
+
+<!DOCTYPE html>
+<html dir="rtl" lang="ar" content="text/html;charset=UTF-8">
+<head>
+     <!-- Required meta tags -->
+     <meta charset="utf-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1">
+ 
+     <!-- Bootstrap CSS -->
+     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+     <link rel="stylesheet" type="text/css" href="{{ url_for('narratordetails.static', filename='narratorcss.css') }}">
+     <link rel="icon" type="image/png" href="#">
+     <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+     <script type="text/javascript" src="narratordetails/static/narratorjs.js"></script> 
+</head>
+<body>
+    <div class="container fixed-top p-3 bg-steel text-white">
+            <h1 style="text-align: center; color:white;">معلومات حول الراوي</h1>
+    </div>
+    
+    <div>
+    <main role="main" class="container">
+        <div class="row " >
+            
+                <div class="container-xxl mt-3 border">
+                    {% for n in narrator:  %}
+                        <table style="display: block;">
+                            <tr><td><input type="hidden" name="authid" value="{{ n['_id'] }}" /></td></tr>
+                            <tr>
+                                <th  style="width: 20%;">الإسم:</th>
+                                <td style="width: 80%;">{{n['narrator_ar']}}</td>
+                            </tr>
+
+                            <tr >
+                                <th style="width: 20%;">أسماء أخرى عرف بها الراوي:</th>
+                                <td>
+                                    <table >
+                                        <tr id="varrow">
+                                            {% for varr in n['varriation']%}
+                                                
+                                                <td>{{varr}}</td>
+                                                <td>&nbsp;<button type='button' name="del" id='del' class='del'>X</button>&nbsp;|&nbsp;</td>
+                                            {% endfor %}   
+                                        </tr>
+                                        
+                                    </table>
+                                </td>
+                            </tr>
+                            <tr><th style="width: 20%;"></th>
+                                <td>
+                                    <form action="{{ url_for('narratordetails.save_varr_ar',id=n['_id'])}}" method="post">
+                                        <table id="chainTable"><tr>
+                                            <td>
+                                                <button type="button" style="width: 175px;" class="addname">أضف اسما آخر</button>
+                                                <div id="btnDiv"></div></td><tr><td align="center">
+                                                <input class="sbtbtn" type="submit" name="Submit_Name" value="تسجيل" disabled>
+                                            </td>
+                                        </tr></table>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr >
+                                <th style="width: 20%;"> التلاميذ:</th>
+                            </tr>
+                            <tr style="width: 100%;">
+                                <table style="width: 100%;">
+                                    <tr>
+                                        {% for sname in students:  %}
+                                            <td style="display:inline-block;">  | {{sname}}  </td>
+                                        {% endfor %}
+                                    </tr>
+                                </table>
+                            </tr><tr><td></br></td></tr>
+                            <tr>
+                                <th><h6> الأساتذة:</h6></th>
+                            </tr>
+                            <tr style="width: 100%;">
+                                <table style="width: 100%;">
+                                    <tr>
+                                        {% for tname in teachers:  %}
+                                            <td style="display:inline-flex;"> | {{tname}}  </td> 
+                                        {% endfor %} 
+                                    </tr>
+                                </table>
+                            </tr>
+                            </tr><tr><td></br></td></tr>
+                            <tr><h6>الأماكن التي عاش فيها:</h6></tr>
+                            <tr style="width: 100%;">
+                                <table style="width: 100%;">
+                                    <tr>
+                                        <td style="display:inline-flex;"> | {{n.bio}}  </td> 
+                                        
+                                    </tr>
+                                </table>
+                            </tr>
+                            
+                            <tr style="width:100%;">
+                                <th style="width:20%;">  الأحاديث التي رواها:</th>
+                                <td style="width:100%;">
+                                    <table style="width:100%;">
+                                        <tr style="width:100%;">
+                                            <td style="width:100%;">
+                                                <textarea disabled style="width:100%; height:100px;">
+                                                    {{n.hadith_arbody}}
+                                                </textarea>
+                                            </td>
+                                        </tr>
+                                    
+                                    </table>
+                                </td>
+                            </tr>   
+                            </table>
+                        {% endfor %}
+                    
+                </div>
+            </div>
+       
+    </main>
+</div>
+</body>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+
+</html>   
+                 
+
+
+       

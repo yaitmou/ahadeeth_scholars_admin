@@ -1,0 +1,3719 @@
+$(document).ready(function(){
+
+        let narrator_list = ""
+        let moallaka_list = ""
+        let hadith_id = ""
+        let rows = $("#hadeeth tbody tr");
+        let hadrows = $("#hadTabbody tr");
+        let currentIndex = 0;
+        const chkdBgColor = 'rgb(24, 139, 240)';
+        let hadith_table_id = "";
+        let old_chapter_id = "";
+        let btnFlag = 1;
+        let isBtnSanadClicked = false;
+        let hadithnumber = 0;
+        const coll_div = document.querySelector("#collectionBlock2");
+        const book_div = document.querySelector("#bookBlock2");
+        const chap_div = document.querySelector("#chapterBlock2");
+                
+        const coll_header = coll_div.querySelector(".headerDiv #coll_name");
+        const book_header = book_div.querySelector(".headerDiv #book_name");
+        const chap_header = chap_div.querySelector(".headerDiv #chap_name");
+                
+        const bookContentDivs = book_div.querySelector("#bkDiv")
+        const chapterContentDivs = chap_div.querySelector("#chDiv")
+        const collcontentDivs = coll_div.querySelector("#clDiv");
+        chapterContentDivs.style.height = ($(chap_div).parent().height() - (book_div.clientHeight + coll_div.clientHeight + 120)) +"px"
+        
+        
+        //synchronous call for getting Narrators list
+        $.ajax({
+            url:"/getnarrator",
+            type:"POST",
+            dataType:'json',
+            async: false,
+            success:function(result){                   
+                narrator_list=result;},
+            error: function(error) {
+                console.log(error);}
+        });
+
+        let moal_count = 1  ///for moallaka 2D array to display on table
+      
+        ///////////////////Code for highlights cut from here////////////////////////
+        
+        
+        
+        //ajax call to /getSanad for displaying the sanad on the table
+        function get_sanad(hadithid)
+        {
+            $.ajax({url:"/getSanad",
+                type:"POST",
+                dataType:'json',
+                data:{hadithid:hadithid},
+                success:function(result){
+                    var data = result;
+                    
+                    len = data.length - 1
+                    let c = 0
+                    $('#tableSanadList> tbody tr:last-child').append('<td><button type="button" id="btnSanad" class="add">+</button></td>')
+                    const sanadtr = document.getElementById('sanaddisplay');
+                    if(data.length==0){sanadtr.style.display = "none";}
+                    
+                    for (var i= len ;i>=0;i--){
+                        sanadtr.style.display = "";
+                        c = c+ 1;
+                        var doc = data[i]
+                        
+                        $('#chainTable > tbody:last-child').append('<td  id="'+
+                         doc[0] +'"><span class="linkSpan">'+ doc[1]+'</span></td>');
+                         
+                        $('#tableSanadList> tbody tr:last-child').append('<td ></td>')
+                        com = getDropDownList(doc[0])
+                        
+                        $("#tableSanadList > tbody tr td:last-child").append(com)
+                        com.select2({
+                          }).on('select2:open',function(){
+
+                            $('.select2-container--above').attr('id','fix');
+                            $('#fix').removeClass('select2-container--above');
+                            $('#fix').addClass('select2-container--below');
+                
+                        });
+                        $("#tableSanadList > tbody tr td:last-child").append('<button type="button" id="btnSanad" class="add">+</button>')
+                    }
+                },
+                error: function(error) {
+                    alert(error);
+                }
+            });
+        }
+        
+        //ajax call to /getmoallaka for displaying moallaka on the table
+        function get_moallaka(hadithid)
+        {
+            $.ajax({url:"/getmoallaka",
+                type:"POST",
+                dataType:'json',
+                data:{hadithid:hadithid},
+                success:function(result){
+                    var data = result.data1;
+                    moallaka_list = data;
+                    const moalatr = document.getElementById('moaladisplay')
+                    if(data.length==0){moalatr.style.display = "none"}
+                    for (var i= 0 ;i<data.length;i++){
+                        moalatr.style.display = ""
+                        var doc = data[i]
+                        for(var d = 0;d<doc.length;d++){
+                            var dat = doc[d];
+                            $('#moalaTable > tbody:last-child').append('<td  id="'+ dat[0] +'"><span class="linkSpan">'+ dat[1]+'</span></td>');
+                            $('#'+ dat[0]).css("padding-right","20px");
+                            $('#'+ dat[0]).css("padding-bottom","5px"); 
+                        }
+                        $('#moalaTable > tbody:last-child').append('<tr></tr>')
+                    }  
+                },
+                error: function(error) {
+                    alert(error);
+                }
+            });
+        }
+
+        //ajax call to /getComments for displaying the comments on the textarea
+        function get_comments(hadithid)
+        {
+            $.ajax({url:"/getComments",
+                type:"POST",
+                dataType:'json',
+                data:{hadithid:hadithid},
+                success:function(result){
+                    for (var i= 0 ;i<result.length;i++){
+                        var doc = result[i]
+                        $('#chainComment').val(doc['chainComment'])
+                        $('#hadeethComment').val(doc['hadithComment'])
+                        
+                    } 
+                },
+                error: function(error) {
+                    alert(error);
+                }
+            });
+        }
+      
+        // fun to get clear the comments and other tabs under the #hadeeth table and get the details of corresponding hadithid passed.
+        function hadeethTabClick(hadithid){
+            clear_chklist()
+            $('#chainComment').val("")
+            $('#hadeethComment').val("")
+            $('#responseTab').css('display','block');
+            
+            get_sanad(hadithid)
+            
+            get_moallaka(hadithid)
+            
+            get_comments(hadithid)
+            
+        }
+
+        ////////////hadeeth table click to show popup for changing the chapter/////
+        $("#hadTabbody").on('click','td', function() {
+            let selftd = $(this);
+            $('#hadpopup1').hide();
+            event.preventDefault();
+            tdIndex = selftd.index();
+            let ch="";
+            let bk="";
+            
+            const checkedtd = $('#chapterTabBody td').filter(function(){
+                return $(this).css('background-color') == chkdBgColor
+            });if (checkedtd.length > 0) {ch = checkedtd.find('input[type=hidden][name=chapter]').val();}
+            const chdbooktd = $('#bookTabBody td').filter(function(){
+                return $(this).css('background-color') == chkdBgColor
+            });if (chdbooktd.length > 0) {bk = chdbooktd.find('input[type=hidden][name=bookHidden]').val();}
+            const chdcolltd = $('#collectionTabBody td').filter(function(){
+                return $(this).css('background-color') == chkdBgColor
+            });if (chdcolltd.length > 0) {cl = chdcolltd.find('input[type=hidden][name=collection]').val();}
+            const relval = selftd.find('a').attr('rel');
+            if(relval == "save"){
+                
+                const hid = selftd.parent('tr').find('input[type="hidden"][name="hadithid_card"]').val();
+                const tdinput = selftd.parent('tr').find('input[type="hidden"]').parent('td')
+                //const tdText = selftd.parent('tr').find("td:eq(1)").text();
+                const tdText = tdinput.text().trim();
+                if(hid == "" &&  tdText!=""){
+                    var chData = {
+                        'chapter':ch,
+                        'book':bk,
+                        'body_ar' : tdText
+                    };
+                    $.ajax({url:"/inserthadith",
+                        type:"POST",
+                        contentType: 'application/json',
+                        data:JSON.stringify(chData),
+                        success:function(result){
+                            if(checkedtd.closest('tr').find('.checkmark').length>0){checkedtd.closest('tr').find('.checkmark').remove()};
+                            if(chdbooktd.closest('tr').find('.checkmark').length>0){chdbooktd.closest('tr').find('.checkmark').remove()};
+                            if(chdcolltd.closest('tr').find('.checkmark').length>0){chdcolltd.closest('tr').find('.checkmark').remove()};
+                            tdinput.attr('contenteditable','False');
+                            tdinput.removeClass("w3-edittd");
+                            //let prevtd = tdinput.prev('td');
+                            //prevtd.remove();
+                            const pele = document.createElement('p');
+                            pele.textContent = tdText;
+                            tdinput.append(pele);
+                            //$(tdinput).appendChild(pele);
+                            //tdinput.closest('tr').find('p').text(tdText); 
+                            tdinput.contents().filter(function(){return this.nodeType===3;}).remove()
+                            tdinput.find('input[type="hidden"]').val(result);
+                            //tdinput.attr('colspan',2);
+                            
+                            const anchorele = selftd.find('a[rel="save"]')
+                            anchorele.attr('rel','edit')
+                            const iele = anchorele.find('i')
+                            iele.removeClass('fa fa-save').addClass('fa fa-edit ');
+                            $('#hadeeth > tbody').prepend('<tr><td style="border: 1px solid black; border-collapse: collapse;" contenteditable="True"><input type="hidden"  id="hadithid" name="hadithid" value="'+ 
+                            result +'" /><input type="number" class="number-txt" name="hadithno" min="0" max="999999" ><p><br>'+ tdText.trim()+'</p></td></tr>');
+                            $('#chainTable tbody').empty();
+                            $('#moalaTable tbody').empty();
+                            $('#responseTab').css('display','none');
+                            rows = $("#hadeeth tbody tr");
+                            showCurrentRow(result); 
+                        }
+                    }); 
+                }else{$(this).parent('tr').find("td:eq(1)").focus();}
+            }else if(relval == "del"){
+                const tdtext = selftd.parent('tr').find('input[type="hidden"][name="hadithid_card"]').val();
+                if(tdtext.trim()==""){selftd.parent('tr').remove();}
+                else{
+                    var haddata = {
+                        'hadithid':tdtext.trim()
+                    };
+                    if (haddata['hadithid'].trim()==""){selftd.parent('tr').remove();}
+                    else{
+                        $.ajax({url:"/deletehadith",
+                            type:"POST",
+                            contentType: 'application/json',
+                            data:JSON.stringify(haddata),
+                            success:function(result){
+                                //console.log(result[0])
+                                let trNext = selftd.parent('tr').next();
+                                selftd.parent('tr').remove();
+                                
+                                //trNext.find('td:eq(1)').css('background-color',chkdBgColor);
+                                $("#hadeeth tr").each(function(){
+                                    if($(this).find('input[type="hidden"][name="hadithid"]').val() == tdtext.trim()){
+                                        $(this).remove();
+                                    }
+                                })
+                                $('#chainTable tbody').empty();
+                                $('#moalaTable tbody').empty();
+                                $('#responseTab').css('display','none');
+                                if(trNext.length>0){trNext.find('td:eq(1)').trigger('click');}
+                                var coll_data={collection:cl,book:bk,chapter:ch};
+                        $.ajax({url:"/gethadithinfo",
+                        type:"POST",
+                        contentType: 'application/json',
+                        data:JSON.stringify(coll_data),
+                        success:function(result){
+                            var data = result.hadith;
+                            var book = result.book
+                            let chapter = result.chap;
+                            var collection = result.collection;
+                            
+                            const chtr = $('#chapterTabBody tr').filter(function() {
+                                return $(this).find('input[type=hidden][name=chapter]').val() == ch;
+                            });
+                            const chtd = chtr.find('td:eq(0)');
+                            
+                            for (var i=0;i<chapter.length;i++){
+                                var doc = chapter[i]
+                                
+                                if(doc[0] == ch){
+                                    if(doc[3] == true ){if(chtd.find('.checkmark').length==0){
+                                        const iele2 = document.createElement("i");
+                                        iele2.className = "checkmark w3-text-theme";
+                                        iele2.style.fontSize = "15px";
+                                        iele2.id = ch;
+                                        chtd.append(iele2);}}
+                                    else{
+                                        if(chtd.find('.checkmark').length>0){chtd.find('.checkmark').remove()}
+                                    }
+                                }
+                            }
+                            const bktr = $('#bookTabBody tr').filter(function() {
+                                return $(this).find('input[type=hidden][name=bookHidden]').val() == bk;
+                            });
+                            const bktd = bktr.find('td:eq(0)');
+                            for (var i=0;i<book.length;i++){
+                                var doc = book[i];
+                                if(doc[0] == bk){
+                                    if(doc[3] == true ){if(bktd.find('.checkmark').length==0){
+                                        const iele3 = document.createElement("i");
+                                        iele3.className = "checkmark w3-text-theme";
+                                        iele3.style.fontSize = "15px";
+                                        iele3.id = bk;
+                                        bktd.append(iele3);}}
+                                    else{
+                                        if(bktd.find('.checkmark').length>0){bktd.find('.checkmark').remove()}
+                                    }
+                                }
+                            }
+                            const colltr = $('#collectionTabBody tr').filter(function() {
+                                return $(this).find('input[type=hidden][name=collection]').val() == cl;
+                            });
+                            const colltd = colltr.find('td:eq(0)');
+                            for (var i=0;i<collection.length;i++){
+                                var doc = collection[i];
+                                if(doc[0] == cl){
+                                    if(doc[3] == true ){if(colltd.find('.checkmark').length==0){
+                                        const iele = document.createElement("i");
+                                        iele.className = "checkmark w3-text-theme";
+                                        iele.style.fontSize = "15px";
+                                        iele.id = cl;
+                                        colltd.append(iele);}}
+                                    else{
+                                        if(colltd.find('.checkmark').length>0){colltd.find('.checkmark').remove()}
+                                    }
+                                }
+                            }
+                        }});    
+                            }
+                        });
+                    }
+                }
+
+                //$(this).parent('tr').remove();
+            }else{
+                
+                let htdval = ""
+                hadith_id = ""
+                rows.each(function() {if ($(this).css("display") === "table-row") {
+                        htdval = $(this).find('td').find('input[type="hidden"]').val();}});
+                if (tdIndex === 2 | tdIndex ===1) {hadith_id = $(this).parent('tr').find('input[type="hidden"]').val();}//else if(tdIndex==1){hadith_id = $(this).find('input[type="hidden"]').val();}
+                if(hadith_id!=""){
+                    hadith_table_id = hadith_id;
+                    currentIndex = $(this).parent('tr').index();
+                    if(hadith_id != htdval){
+                        $("#hadTabbody td").css({backgroundColor: '',color: ''}); //clear the selection of the tbody
+                        $('#chainTable tbody').empty();
+                        $('#moalaTable tbody').empty();
+                        $('#responseTab').css('display','none');
+                        showCurrentRow(hadith_id);
+                    }
+                    if (tdIndex === 2) {
+                        $("#btnOk").prop("disabled", true);
+                        //to get the corresponding chapter of book selected and display on the hadpopup
+                        let book_data={data_book:bk};
+                        //getchapters and their hadiths based on the book
+                        $.ajax({url:"/getbookchapters",
+                            type:"post",
+                            contentType: 'application/json',
+                            data:JSON.stringify(book_data),
+                            success:function(result){
+                                var chap = result.chap;
+                                let selector = document.getElementById("hadChap");
+                                selector.innerHTML = "";
+                                for (var i=0;i<chap.length;i++)
+                                {
+                                    var doc = chap[i]
+                                    
+                                    const tr = document.createElement("tr");
+                        
+                                    const td1 = document.createElement("td");
+                                    td1.style.textAlign = "right";
+                                    td1.style.fontSize = "10px"; 
+                        
+                                    const chapoption = document.createElement("input");
+                                    chapoption.type = "radio";
+                                    chapoption.className = "form-radio-input";
+                                    chapoption.name = "optChapter";
+                                    chapoption.value = doc["_id"];
+                                    if (ch == doc["_id"]) {chapoption.checked = true}
+                                    
+                                    
+                                    td1.appendChild(chapoption);
+
+                                    const td2 = document.createElement("td");
+                                    td2.style.textAlign = "right";
+                                    
+                                    const hiddenInput = document.createElement("input");
+                                    hiddenInput.type = "hidden";
+                                    hiddenInput.id = "hadchapid";
+                                    hiddenInput.name = "hadchapid";
+                                    hiddenInput.value = doc["_id"];
+
+                                    const p = document.createElement("p");
+                                    p.textContent = doc["arChapter"];
+
+                                    td2.appendChild(hiddenInput);
+                                    td2.appendChild(p);
+                                    
+                                    tr.appendChild(td1);
+                                    tr.appendChild(td2);
+                        
+
+                                    selector.appendChild(tr);
+                                }
+                            }
+                        });
+                        //Show the popup
+                        $('#hadpopup1').show();
+                        //get the position for where to display the popup
+                        const parentElement = $(this).parent();
+                        const trPosition = $(parentElement).offset();
+                        const trHeight = $(this).height();
+                        const popupHeight = $('#hadpopup1').height();
+                        const popupTop = trPosition.top + trHeight; 
+
+                        // Set the position of the popup
+                        $('#hadpopup1').css({ left:trPosition.left , top: popupTop });    
+                    }
+                }
+            }
+        }); 
+        
+        
+        
+
+        ////////////ajax call to /getnarratorinfo to get the author details on the popup window/////////////////
+        function get_narrator_info(narratorid)
+        {
+            $.ajax({url:"/getnarratorinfo",
+                type:"POST",
+                dataType:'json',
+                data:{narratorid:narratorid},
+                success:function(result){
+                    for (var i= 1 ;i<result.length;i++){
+                        var doc = result[i]
+                        var name = $(".popup-content table tbody tr").find(".data_name")
+                        if (doc['narrator_ar']) {name.text(doc['narrator_ar']);name.attr('id',doc['_id']);}
+                        else{name.text("No Data")}
+                        var hadithno = $(".popup-content table tbody tr").find(".data_hadno")
+                        hadithno.text(result[0]);
+                        var nstudents =  $(".popup-content table tbody tr").find(".data_students")
+                        if(doc['nstudents']){nstudents.text(doc['nstudents']);}
+                        else{nstudents.text("No Data");}
+                        var nteachers = $(".popup-content table tbody tr").find(".data_teachers")
+                        if(doc['nteachers']){nteachers.text(doc['nteachers']);}
+                        else{nteachers.text('No Data');}
+                        var bio = $(".popup-content table tbody tr").find(".data_bio")
+                        if(doc['bio']){bio.text(doc['bio']);}
+                        else{bio.text("No Data");}
+                        $("#alink").attr("href", '/'+narratorid);
+                    } 
+                    showPopup()
+                },
+                error: function(error) {
+                    console.log(error)
+                }
+            });
+        }
+      
+        //////////span click on the chainTable click to show the popup with the author details//////
+        $("#chainTable").on('click','span', function() {
+            const parentElement = $(this).parent();
+            const trPosition = $(parentElement).offset();
+            const trHeight = $(this).height();
+            const popupHeight = $('.popup-overlay').height();
+            let popupTop = trPosition.top - 130;
+            if (window.innerHeight<510){popupTop = $("#hadeeth").offset().top + 20;}
+            if (window.innerHeight>800){popupTop = trPosition.top + 20;}
+             
+            $td=$(this).closest('td');
+            $('.popup-overlay').css({ left:trPosition.left  , top: popupTop }); 
+            get_narrator_info($td.attr('id'))
+            
+            const td = $('#popupTable tbody tr td [contenteditable="true"]'); 
+            setTimeout(function () {
+                $(td).focus();
+            }, 50);
+
+
+            
+           //setTimeout(function () { $(td).focus(); }, 50);
+           td.addClass("w3-edittd");
+
+           
+        });
+        $(window).resize(function() {
+            //alert(window.innerWidth)
+            //if($('.popup-overlay').show()){alert("popup")}
+            updatePopupLeftPosition($('.popup-overlay'))
+        });
+        //$(window).on('resize', updatePopupLeftPosition($('.popup-overlay')));
+        function updatePopupLeftPosition($this) {
+            let popupTop = $("#responseTab").offset().top - 120;
+            if (window.innerHeight<650){popupTop = $("#hadeeth").offset().top + 20;}
+            if (window.innerHeight>800){popupTop = $("#responseTab").offset().top + 20;}
+            let newLeft = $("#responseTab").offset().left + 20;
+            if (window.innerWidth>800){newLeft = $("#chainTable").offset().left + 70;} // Get the new left position
+            $('.popup-overlay').css({ left: newLeft , top: popupTop });
+        }
+        $("#saveNarratorName").on('click', function() {
+            event.preventDefault();
+            const td = $(this).closest('td').prev('td');
+            const tdid = '#chainTable #'+$(this).closest('td').prev('td').attr('id')
+            const tdtxt = $(this).closest('td').prev('td').text().trim()
+            var narrData = {
+                'id': $(this).closest('td').prev('td').attr('id'),
+                'narrator_ar': tdtxt
+            };
+            $.ajax({url:"/updatenarrname",
+            type:"POST",
+            contentType: 'application/json',
+            data:JSON.stringify(narrData),
+            success:function(result){
+                $(tdid).find('span').html(tdtxt);
+
+            },
+            error: function (xhr, status, error) {
+              console.error("AJAX Error:", error);
+              
+            }
+            });   
+        });
+
+
+        ////span click on the moalaTable to show the popup/////
+        $("#moalaTable").on('click','span', function() {
+            $td=$(this).closest('td');
+            const parentElement = $(this).parent();
+            const trPosition = $(parentElement).offset();
+            const trHeight = $(this).height();
+            const popupHeight = $('.popup-overlay').height();
+            const popupTop = trPosition.top + 20; 
+            $td=$(this).closest('td');
+            $('.popup-overlay').css({ left:trPosition.left + 30 , top: popupTop }); 
+            get_narrator_info($td.attr('id'))
+            const td = $('#popupTable tbody tr td [contenteditable="true"]');
+            //const pInsideTd = td.find('p');
+            
+           setTimeout(function () { td.focus(); }, 50);
+           td.addClass("w3-edittd");
+        });
+        
+        function updateBookTable(coll){
+            var coll_data={collection:coll};
+                $.ajax({url:"/getbooks",
+                type:"POST",
+                contentType: 'application/json',
+                data:JSON.stringify(coll_data),
+                success:function(result){
+                    let selector = document.getElementById("bookTabBody");
+                    book = result.book;
+                    
+             for (var i=0;i<book.length;i++){
+                var doc = book[i]
+                
+                if(doc["flag"] == 0){
+                        var chdBooktr = $('#bookTabBody tr').filter(function() {
+                        return $(this).find('input[type=hidden][name=bookHidden]').val() == doc['_id'] & $(this).find('.deleteRow').length==0;
+                        });if(chdBooktr.find('td:eq(1)').css('background-color')!=chkdBgColor){
+                            const dropdownDiv = '<a href="" class="deleteRow" rel="del"><i class="fa fa-minus w3-text-theme" ></i></a>' 
+                            chdBooktr.find('td:eq(0)').append(dropdownDiv)                                     
+                                                            
+                        }
+                        
+                    
+                }
+                
+                 
+            } 
+            //updateBookName($('input[type=checkbox][name="book"]:checked'))
+                }});
+            
+            
+        }
+        function updatechapterTable(book){
+            
+            let book_data={data_book:book};
+                $.ajax({url:"/getbookchapters",
+                type:"POST",
+                contentType: 'application/json',
+                data:JSON.stringify(book_data),
+                success:function(result){
+                    let selector = document.getElementById("chapterTabBody");
+                    chap = result.chap;
+                    
+             for (var i=0;i<chap.length;i++){
+                var doc = chap[i]
+                
+                if(doc["flag"] == 0){
+                        var chdChaptr = $('#chapterTabBody tr').filter(function() {
+                        return $(this).find('input[type=hidden][name=chapter]').val() == doc['_id'] & $(this).find('.deleteRow').length==0;
+                        });if(chdChaptr.find('td:eq(1)').css('background-color')!=chkdBgColor){
+                            const dropdownDiv = '<a href="" class="deleteRow" rel="del"><i class="fa fa-minus w3-text-theme" ></i></a>' 
+                            chdChaptr.find('td:eq(0)').append(dropdownDiv)                                     
+                                                            
+                        }
+                        
+                    
+                }
+                
+                 
+            } 
+            //updateBookName($('input[type=checkbox][name="book"]:checked'))
+                }});
+            
+            
+        }
+        function newBookTable(book){
+            let selector = document.getElementById("bookTabBody");
+            selector.innerHTML = "";
+            var firstrec = null;
+            for (var i=0;i<book.length;i++){
+                var doc = book[i]
+                const tr = document.createElement("tr");
+                
+                const td1 = document.createElement("td");
+                td1.style.textAlign = "center";
+                td1.style.width = "5px"; 
+                
+                const iele = document.createElement("i");
+                iele.className = "checkmark w3-text-theme";
+                iele.style.fontSize = "15px";
+                iele.id = doc[0];
+
+                //del icon for chapters with no hadiths
+                const delIcon = document.createElement("a");
+                delIcon.href = "";
+                delIcon.className = "deleteRow";
+                delIcon.setAttribute("rel", "del");
+                const icon = document.createElement("i");
+                icon.className = "fa fa-minus w3-text-theme";
+                icon.style.fontSize = "15px";
+                delIcon.appendChild(icon);
+                //if there is no hadith minus button else checkbox
+                               
+                if (doc[2] == 1) {
+                    if(doc[3]){
+                        td1.appendChild(iele); }}
+                    else{td1.appendChild(delIcon);} 
+                
+                //if (doc[2] == 1 && firstrec == null) {if(btnFlag==1){td1.appendChild(iele); firstrec = doc;}else if(btnFlag==0 && i==book.length-1){td1.appendChild(iele); firstrec = doc;}} // Set the "checked" property of first one
+                
+                const td2 = document.createElement("td");
+                td2.style.textAlign = "right";
+                td2.style.whiteSpace ="wrap";
+                td2.style.overflowY = "auto";
+                td2.style.wordBreak = "break-all";
+                td2.style.width = "150px";
+                td2.style.maxWidth = "150px";
+                if (doc[2] == 1 && firstrec == null) {if(btnFlag==1){td2.style.backgroundColor ="rgb(24, 139, 240)";
+                td2.style.color = "white"; firstrec = doc;}else if(btnFlag==0 && i==book.length-1){td2.style.backgroundColor ="rgb(24, 139, 240)";
+                td2.style.color = "white"; firstrec = doc;}}
+                
+
+                const hiddenInput = document.createElement("input");
+                hiddenInput.type = "hidden";
+                hiddenInput.id = "bookHidden";
+                hiddenInput.name = "bookHidden";
+                hiddenInput.value = doc[0];
+
+                const p = document.createElement("p");
+                p.textContent = doc[1];
+
+                td2.appendChild(hiddenInput);
+                td2.appendChild(p);
+
+                const td3 = document.createElement("td");
+                td3.style.textAlign = "left";
+                td3.style.width="2px";
+                td3.style.paddingLeftm = "2%";
+
+                const anchorElement = document.createElement("a")
+                anchorElement.setAttribute("href","");
+                anchorElement.setAttribute("rel","edit");
+                
+                const editIcon = document.createElement("i");
+                editIcon.className = "fa fa-edit w3-text-theme";
+                editIcon.style.fontSize = "15px";
+                
+                anchorElement.appendChild(editIcon)
+                td3.appendChild(anchorElement);
+
+                tr.appendChild(td1);
+                tr.appendChild(td2);
+                tr.appendChild(td3);
+
+                selector.appendChild(tr);
+                
+            }
+            var chdbooktd = $('#bookTabBody td').filter(function() {
+                return $(this).css('background-color') == chkdBgColor;
+            });
+            updateBookName(chdbooktd.find('p'))
+            
+        }
+
+        function newChapterTable(chap){
+            let selector = document.getElementById("chapterTabBody");
+            selector.innerHTML = "";
+            var firstrec = null;
+            
+            for (var i=0;i<chap.length;i++){
+                var doc = chap[i]
+                const tr = document.createElement("tr");
+                
+                const td1 = document.createElement("td");
+                td1.style.textAlign = "center";
+                td1.style.width = "5px"; 
+                
+                const iele = document.createElement("i");
+                iele.className = "checkmark w3-text-theme";
+                iele.style.fontSize = "15px";
+                iele.id = doc[0];
+
+                //del icon for chapters with no hadiths
+                const delIcon = document.createElement("a");
+                delIcon.href = "";
+                delIcon.className = "deleteRow";
+                delIcon.setAttribute("rel", "del");
+                const icon = document.createElement("i");
+                icon.className = "fa fa-minus w3-text-theme";
+                icon.style.fontSize = "15px";
+                delIcon.appendChild(icon);
+                //if there is no hadith minus button else checkbox
+                if(doc[2]){if(doc[2] == 1){if(doc[3]){td1.appendChild(iele);}}else{td1.appendChild(delIcon);}}else{if(doc["flag"] == 1){if(doc["save_flag"]){td1.appendChild(iele);}}else{td1.appendChild(delIcon);}}
+                
+                //if(doc[0]){checkbox.value = doc[0];}else{checkbox.value = doc["_id"];}
+                //if(doc[2]){if (doc[2] == 1 && firstrec == null){if(btnFlag==0 && i==(chap.length - 1)){checkbox.checked = true; firstrec = doc;}else if(btnFlag==1){checkbox.checked = true; firstrec = doc;}}}
+                //else{if (doc["flag"] == 1 && firstrec == null) {if(btnFlag==0 && i==(chap.length - 1)){checkbox.checked = true; firstrec = doc;}else if(btnFlag==1){checkbox.checked = true; firstrec = doc;}}} // Set the "checked" property of first one
+                
+                const td2 = document.createElement("td");
+                td2.style.textAlign = "right";
+                td2.style.whiteSpace ="wrap";
+                td2.style.overflowY = "auto";
+                td2.style.wordBreak = "break-all";
+                td2.style.width = "150px";
+                td2.style.maxWidth = "150px";
+                if(doc[2]){if (doc[2] == 1 && firstrec == null){if(btnFlag==0 && i==(chap.length - 1)){
+                td2.style.backgroundColor = "rgb(24, 139, 240)";
+                td2.style.color ="white";firstrec = doc;}else if(btnFlag==1){td2.style.backgroundColor = "rgb(24, 139, 240)";td2.style.color ="white";firstrec = doc;}}}
+                else{if (doc["flag"] == 1 && firstrec == null) {if(btnFlag==0 && i==(chap.length - 1)){td2.style.backgroundColor = "rgb(24, 139, 240)";
+                td2.style.color ="white"; firstrec = doc;}else if(btnFlag==1){td2.style.backgroundColor = "rgb(24, 139, 240)";
+                td2.style.color ="white"; firstrec = doc;}}}
+                
+                const hiddenInput = document.createElement("input");
+                hiddenInput.type = "hidden";
+                hiddenInput.id = "chapter";
+                hiddenInput.name = "chapter";
+                if(doc[0]){hiddenInput.value = doc[0];}else{hiddenInput.value = doc["_id"];}
+                
+
+                const p = document.createElement("p");
+                if(doc[1]){p.textContent = doc[1];}else{p.textContent = doc["arChapter"];}
+
+                td2.appendChild(hiddenInput);
+                td2.appendChild(p);
+
+                const td3 = document.createElement("td");
+                td3.style.textAlign = "left";
+                td3.style.width ="2px";
+                td3.style.paddingLeft="2%";
+
+                const anchorElement = document.createElement("a")
+                anchorElement.setAttribute("href","");
+                anchorElement.setAttribute("rel","edit");
+                
+                const editIcon = document.createElement("i");
+                editIcon.className = "fa fa-edit w3-text-theme";
+                editIcon.style.fontSize = "15px";
+                
+                anchorElement.appendChild(editIcon)
+                td3.appendChild(anchorElement);
+
+                tr.appendChild(td1);
+                tr.appendChild(td2);
+                tr.appendChild(td3);
+
+                selector.appendChild(tr);
+                
+            }
+        }
+
+        function newHadithTable(hadith){
+            let hadbody = document.getElementById("hadTabbody");
+            hadbody.innerHTML = "";
+            
+            for (var i=0;i<hadith.length;i++){
+                var doc = hadith[i]
+                
+                $('#hadeeth > tbody:last-child').append('<tr><td style="border: 1px solid black; border-collapse: collapse;" contenteditable="True"><input type="hidden"  id="hadithid" name="hadithid" value="'+ 
+                    doc['_id'] +'" /><input type="number" class="number-txt" name="hadithno"  value="'+doc['hadithno']+'" min="0" max="999999" /><p><br>'+ doc["body_ar"]+'</p></td></tr>');
+                var htmlString = '<tr><td style="text-align: center;">';
+                if (doc['save_flag']) {htmlString += '<i class="checkmark w3-text-theme" style="font-size: 15px;"></i>';}
+                htmlString += '</td><td style="text-align: right;"><a href="" style="text-decoration: none;"><input type="hidden" id="hadithid_card" name="hadithid_card" value="' + 
+                doc["_id"] + '" /><p>' + doc["body_ar"].slice(0, 100) + '...</p></a></td><td style="text-align: right; font-size:10px;"><a href="" rel="edit"><i class="fa fa-edit w3-text-theme" style="font-size:15px"></i></a></td></tr>';
+                hadbody.innerHTML += htmlString                  
+            }
+            
+        }
+
+        
+        /////key up function for chainComment to activate/deactivate Submit button
+        $(function() {
+            $("#chainComment").keyup(check_submit).each(function() {
+                check_submit();
+            });
+  
+        });
+        
+        /////key up function for hadeethComment to activate/deactivate Submit button
+        $(function() {
+            $("#hadeethComment").keyup(check_submit).each(function() {
+                check_submit();
+            });
+        });
+        
+        /////function activate when hadeethComment lost focus
+        $("#hadeethComment").blur(function(){
+            if ($(this).val().trim().length == 0)
+            {
+                $(this).attr("placeholder", "ادخل ملاحضاتك حول متن الحديث");
+            }
+        });
+        
+        ////////////////////////////Next and previous button code///////////////////////////
+        
+        $('#nav').on('click', 'a', function () {
+            var currRow = $(this).attr('rel');
+            $('#hadpopup1').hide(); 
+            const matn = rows[currentIndex].textContent;
+            const matnid = rows[currentIndex].querySelector('input[type="hidden"]').value;
+            hadithnumber = rows[currentIndex].querySelector('input[name="hadithno"]').value;
+            
+//////////////////
+            if (currRow == "nxtbtn") {
+                
+                nextRecord(matn,matnid)
+                
+            } 
+            else if (currRow == "prevbtn") {
+               
+              prevRecord();
+            }
+            event.preventDefault();
+            
+        }).find('a.active').trigger('click');
+        
+        function nextRecord(matn,matnid){
+            btnFlag = 1;
+            
+            const rlen = rows.length - 1;
+                
+            if(currentIndex  == rlen){ //checking end of records in the selected chapter,if so moved to next chapter
+                currentIndex = 0;
+                    
+                var checkedtd = $('#chapterTabBody td').filter(function() {
+                    return $(this).css('background-color') == chkdBgColor;
+                });
+                var chdbooktd = $('#bookTabBody td').filter(function() {
+                    return $(this).css('background-color') == chkdBgColor;
+                });
+                var chdcolltd = $('#collectionTabBody td').filter(function() {
+                    return $(this).css('background-color') == chkdBgColor;
+                });
+                if (checkedtd.length > 0) {
+                        
+                    const chid = checkedtd.find('input[type=hidden][name=chapter]').val();
+                    var nextrowinchapter = checkedtd.closest('tr').next()
+                    var nextIndex = $(nextrowinchapter).index() + 1;
+                     
+                    while (nextIndex) {
+                        var nextRowCheckbox = nextrowinchapter.find('.deleteRow');
+                        if(nextRowCheckbox.length == 0){
+                            nextrowinchapter.find('td>p').trigger('click');
+                            
+                            $('#chDiv').animate({ scrollTop:  $(nextrowinchapter).position().top  }, 500);
+                            
+                            $('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
+                            break;
+                        }
+                        nextrowinchapter  = nextrowinchapter.next()
+                        nextIndex = $(nextrowinchapter).index() + 1;
+                    }
+                    submitForm(matn,matnid,chid); //comment for testing
+                    var chdhadithtd = $('#hadTabbody td').filter(function() {
+                        return $(this).css('background-color') == chkdBgColor;
+                    });chdhadithtd.find('p').text(matn.trim().slice(0,100)+ "...")
+                    
+                    if(!nextIndex){
+                            //when reach last row
+                            $('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
+                            
+                            //var nextrowinbook = bookchkboxes[0].closest('tr').nextElementSibling
+                            var nextrowinbook = chdbooktd.closest('tr').next()
+                            var nextBookIndex = $(nextrowinbook).index() + 1;
+                            
+                            while (nextBookIndex){
+                                var nextRowbkchk = nextrowinbook.find('.deleteRow');
+                                if(nextRowbkchk.length == 0){
+                                    nextrowinbook.find('td>p').trigger('click');
+                                    $('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
+                                    break;
+                                }
+                                nextrowinbook  = nextrowinbook.next();
+                                nextBookIndex = $(nextrowinbook).index() + 1;
+                            }
+                            if(!nextBookIndex){//when reach last row of book
+                                $('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
+                                
+                                
+                                var nextrowincoll = chdcolltd.closest('tr').next();
+                                var nextCollIndex = $(nextrowincoll).index() + 1;
+                                
+                                while (nextCollIndex){
+                                    
+                                    const nextRowcollchk = nextrowincoll.find('.deleteRow');   
+                                    if(nextRowcollchk.length == 0){
+                                        nextrowincoll.find('td>p').trigger('click');
+                                        break;
+                                    }
+                                    nextrowincoll  = nextrowincoll.next();
+                                    nextCollIndex = $(nextrowincoll).index() + 1;
+                                    
+                                }
+                                
+                                if(!nextCollIndex){$('#nav a[rel="nxtbtn"]').addClass('w3-disabled');$('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
+                                    $('#chainTable tbody').empty();
+                                    $('#moalaTable tbody').empty();  
+                                    $('#responseTab').css('display','none'); 
+                                    hadeethTabClick(matnid)
+                                }
+                            }
+                            
+                    }
+                        
+                        
+                }
+                    
+            }
+            else
+            { //next hadith in the current selected chapter
+                    //save the current record
+                var checkedtd = $('#chapterTabBody td').filter(function() {
+                    return $(this).css('background-color') == chkdBgColor;
+                });
+                const chid = checkedtd.find('input[type=hidden][name=chapter]').val();
+                    
+                submitForm(matn,matnid,chid);
+                var chdhadithtd = $('#hadTabbody td').filter(function() {
+                    return $(this).css('background-color') == chkdBgColor;
+                });chdhadithtd.find('p').text(matn.trim().slice(0,100)+ "...")
+                if (checkedtd.length > 0) {
+                    currentIndex = (currentIndex + 1) % rows.length;
+                    $('#chainTable tbody').empty();
+                    $('#moalaTable tbody').empty();
+                    $('#responseTab').css('display','none');
+                    showCurrentRow();
+                }
+                var chdbooktd = $('#bookTabBody td').filter(function() {
+                    return $(this).css('background-color') == chkdBgColor;
+                });
+                var chdcolltd = $('#collectionTabBody td').filter(function() {
+                    return $(this).css('background-color') == chkdBgColor;
+                });
+                let fl = false;
+                const chCount = $('#chapterTabBody tr').length;
+                let cnt = 0
+                $("#chapterTabBody tr").each(function(){
+                    if($(this).find('.checkmark').length==0){cnt = cnt + 1;}
+                })
+                if(cnt == chCount){fl=true;}
+                if(fl == true){
+                    const iele = document.createElement("i");
+                    iele.className = "checkmark w3-text-theme";
+                    iele.style.fontSize = "15px";
+                    if(chdbooktd.closest('tr').find('.checkmark').length<1){
+                        chdbooktd.closest('tr').find('td:eq(0)').append(iele)}}
+                else{
+                    if(chdbooktd.closest('tr').find('.checkmark').length>0){chdbooktd.closest('tr').find('td:eq(0)').html('')}
+                }
+                cnt = 0;fl=false;const colCount = $('#bookTabBody tr').length;
+                
+                $("#bookTabBody tr").each(function(){
+                    if($(this).find('.checkmark').length==0){cnt = cnt + 1;}
+                })
+                
+                if(cnt == colCount){fl=true;}
+                    if(fl == true){
+                        const iele = document.createElement("i");
+                        iele.className = "checkmark w3-text-theme";
+                        iele.style.fontSize = "15px";
+                        if(chdcolltd.closest('tr').find('.checkmark').length<1){
+                            chdcolltd.closest('tr').find('td:eq(0)').append(iele)}}
+                    else{
+                        if(chdcolltd.closest('tr').find('.checkmark').length>0){chdcolltd.closest('tr').find('td:eq(0)').html('')}
+                    }        
+                    
+                    
+            }
+                
+            
+        }
+        
+        function prevRecord(){
+            btnFlag = 0;
+            let checkedtd = $('#chapterTabBody td').filter(function() {
+                return $(this).css('background-color') == chkdBgColor;
+            });
+            let chdbooktd = $('#bookTabBody td').filter(function() {
+                return $(this).css('background-color') == chkdBgColor;
+            });
+            let chdcolltd = $('#collectionTabBody td').filter(function() {
+                return $(this).css('background-color') == chkdBgColor;
+            });
+            if(currentIndex  == 0){ //checking end of records in the selected chapter,if so moved to next chapter
+                let chkLength = checkedtd.length;
+                if (chkLength > 0) { 
+                    var prevrowinchapter = $(checkedtd).closest('tr').prev();
+                    var prevIndex = $(prevrowinchapter).index() + 1;
+                    
+                    while (prevIndex) {
+                        var prevRowCheckbox = prevrowinchapter.find('.deleteRow');
+                        if(prevRowCheckbox.length == 0){
+                            
+                                prevrowinchapter.find('td>p').trigger('click');
+                                $('#chDiv').animate({ scrollTop:  $(prevrowinchapter).position().top  }, 500);
+                                //$('#chDiv').animate({ scrollTop:  prevrowinchapter.find('td>p').position().top  }, 500);
+                                $('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
+                                break;
+                            }
+                        prevrowinchapter  = prevrowinchapter.prev();
+                        prevIndex = $(prevrowinchapter).index() + 1;
+                            
+                    }
+                    if(!prevIndex){
+                            $('#nav a[rel="nxtbtn"]').removeClass('w3-disabled');
+                            var prevrowinbook = $(chdbooktd).closest('tr').prev();
+                            var prevBookIndex = $(prevrowinbook).index() + 1;
+                            
+                            while (prevBookIndex) {
+                                const prevRowbookchk = prevrowinbook.find('.deleteRow');    
+                                if(prevRowbookchk.length == 0){
+                                    prevrowinbook.find('td>p').trigger('click');
+                                    $('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
+                                    break;
+                                } 
+                                prevrowinbook  = prevrowinbook.prev();
+                                prevBookIndex = $(prevrowinbook).index() + 1;
+                            }
+                            if(!prevBookIndex){
+                                $('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
+                                var prevrowincoll = $(chdcolltd).closest('tr').prev();
+                                var prevCollIndex = $(prevrowincoll).index() + 1;
+                                
+                                while (prevCollIndex){
+                                    
+                                    const prevRowcollchk = prevrowincoll.find('.deleteRow');    
+                                    
+                                    if(prevRowcollchk.length == 0){
+                                        prevrowincoll.find('td>p').trigger('click');
+                                        break;
+                                    }
+                                    prevrowincoll  = prevrowincoll.prev()
+                                    prevCollIndex = $(prevrowincoll).index() + 1;
+                                    btnFlag = 1;
+                                }
+                                
+                                if(!prevrowincoll){$('#nav a[rel="prevbtn"]').addClass('w3-disabled');$('#nav a[rel="nxtbtn"]').removeClass('w3-disabled');}
+                                
+                            }
+                        }
+                        
+                    }
+                }
+                else{ //next hadith in the current selected chapter
+                    $('#chainTable tbody').empty();
+                    $('#moalaTable tbody').empty();
+                    $('#responseTab').css('display','none');
+                    currentIndex = (currentIndex - 1 + rows.length) % rows.length;
+                    
+                    showCurrentRow();
+                    
+                }
+            
+                
+              
+            
+        }
+
+        
+
+
+
+        /////////////////////Save data to db/////////////////// 
+        ////Submit button
+        function submitForm(matn,matnid,chid){
+            var saveflag = false;
+            if($('#hadeethComment').val().trim()!="" || $('#chainComment').val().trim()!=""){saveflag=true}
+            
+            var chdcolltd = $('#collectionTabBody td').filter(function() {
+                return $(this).css('background-color') == chkdBgColor;
+            });const collchkbox = chdcolltd.find('input[type=hidden][name=collection]').val();
+            
+            var chdbooktd = $('#bookTabBody td').filter(function() {
+                return $(this).css('background-color') == chkdBgColor;
+            });const bkchkbox = chdbooktd.find('input[type=hidden][name=bookHidden]').val();
+            //get the moallakka list
+            var mlist = {};
+            if($('#chkMoallaka').is(':checked')) {
+                var tableCount = $('table[id^="tableMoalList"]').length;
+                for (var i=1;i<=tableCount;i++){
+                    var selectCount = $('#tableMoalList'+i+ ' select').length;
+                    mlist['subList' + i] = [];
+                    var subLists = []
+                    input_name = 'input_text1'+i 
+                    $('select[name="'+input_name+'"]').each(function() {
+                        subLists.push($(this).val());
+                    });
+                    mlist['subList' + i].push(subLists); 
+                }
+            }
+            //get the sanad list
+            var slist = new Array();
+            
+            if (isBtnSanadClicked){
+                $('[name=input_text2]').each(function() {
+                    if($(this).val()!="0"){
+                        slist.push($(this).val())
+                    }
+                });
+                
+            }
+            var formData = {
+                'coll_id': collchkbox,
+                'book_id': bkchkbox,
+                'chapter_id': chid,
+                'hadith_id': matnid,
+                'hadeethCmnt' : $('#hadeethComment').val().trim(),
+                'chainComment' : $('#chainComment').val().trim(),
+                'sanadList' : slist,
+                'moallakaList' : mlist,
+                'matn': matn.trim(),
+                'save_flag' : saveflag,
+                'hadithno' : hadithnumber
+            };
+            //saveflag = true;
+        // send a POST request to the Flask server with the form data
+            $.ajax({
+                url: '/submit',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(formData),
+                success: function(response) {
+                        var coll_data={collection:collchkbox,book:bkchkbox,chapter:chid};
+                        $.ajax({url:"/gethadithinfo",
+                        type:"POST",
+                        contentType: 'application/json',
+                        data:JSON.stringify(coll_data),
+                        success:function(result){
+                            var data = result.hadith;
+                            var book = result.book
+                            let chapter = result.chap;
+                            var collection = result.collection;
+                            
+                            const hadtr = $('#hadTabbody tr').filter(function() {
+                                return $(this).find('input[type=hidden][name=hadithid_card]').val() ==matnid;
+                            });
+                            const hadtd = hadtr.find('td:eq(0)');
+                            for (var i=0;i<data.length;i++){
+                                var doc = data[i];
+                                if(doc['_id'] == matnid){
+                                    if(doc['save_flag']==true){
+                                        if(hadtd.find('.checkmark').length==0){
+                                            const iele1 = document.createElement("i");
+                                            iele1.className = "checkmark w3-text-theme";
+                                            iele1.style.fontSize = "15px";
+                                            iele1.id = matnid;if(hadtd.find('.deleteRow').length>0){hadtd.find('.deleteRow').remove()}
+                                            hadtr.find('td:eq(0)').append(iele1);}}
+                                    else{if(hadtd.find('.checkmark').length>0){hadtd.find('.checkmark').remove()}}
+                                }
+                            }
+                            const chtr = $('#chapterTabBody tr').filter(function() {
+                                return $(this).find('input[type=hidden][name=chapter]').val() == chid;
+                            });
+                            const chtd = chtr.find('td:eq(0)');
+                            
+                            for (var i=0;i<chapter.length;i++){
+                                var doc = chapter[i]
+                                
+                                if(doc[0] == chid){
+                                    if(doc[3] == true ){if(chtd.find('.checkmark').length==0){
+                                        const iele2 = document.createElement("i");
+                                        iele2.className = "checkmark w3-text-theme";
+                                        iele2.style.fontSize = "15px";
+                                        iele2.id = chid;
+                                        chtd.append(iele2);}}
+                                    else{
+                                        if(chtd.find('.checkmark').length>0){chtd.find('.checkmark').remove()}
+                                    }
+                                }
+                            }
+                            const bktr = $('#bookTabBody tr').filter(function() {
+                                return $(this).find('input[type=hidden][name=bookHidden]').val() == bkchkbox;
+                            });
+                            const bktd = bktr.find('td:eq(0)');
+                            for (var i=0;i<book.length;i++){
+                                var doc = book[i];
+                                if(doc[0] == bkchkbox){
+                                    if(doc[3] == true ){if(bktd.find('.checkmark').length==0){
+                                        const iele3 = document.createElement("i");
+                                        iele3.className = "checkmark w3-text-theme";
+                                        iele3.style.fontSize = "15px";
+                                        iele3.id = bkchkbox;
+                                        bktd.append(iele3);}}
+                                    else{
+                                        if(bktd.find('.checkmark').length>0){bktd.find('.checkmark').remove()}
+                                    }
+                                }
+                            }
+                            const colltr = $('#collectionTabBody tr').filter(function() {
+                                return $(this).find('input[type=hidden][name=collection]').val() == collchkbox;
+                            });
+                            const colltd = colltr.find('td:eq(0)');
+                            for (var i=0;i<collection.length;i++){
+                                var doc = collection[i];
+                                if(doc[0] == collchkbox){
+                                    if(doc[3] == true ){if(colltd.find('.checkmark').length==0){
+                                        const iele = document.createElement("i");
+                                        iele.className = "checkmark w3-text-theme";
+                                        iele.style.fontSize = "15px";
+                                        iele.id = collchkbox;
+                                        colltd.append(iele);}}
+                                    else{
+                                        if(colltd.find('.checkmark').length>0){colltd.find('.checkmark').remove()}
+                                    }
+                                }
+                            }
+                        },   
+                        error: function(error) {
+                            console.log(error);
+                            
+                        }
+                    
+                    });/* let book_data={data_book:bkchkbox};
+                    $.ajax({url:"/getchapter",
+                        type:"POST",
+                        contentType: 'application/json',
+                        data:JSON.stringify(book_data),
+                        success:function(result){
+                            var data = result.chap;
+                            let bkflag = false;let bkcnt = 0
+                            const iele = document.createElement("i");
+                            iele.className = "checkmark w3-text-theme";
+                            iele.id = bkchkbox;
+                            iele.style.fontSize = "15px";
+                            for (var i=0;i<data.length;i++){
+                                var doc = data[i];
+                                if(doc['save_flag']==true){bkcnt = bkcnt + 1;}
+                            }
+                            if(bkcnt == data.length & bkcnt!=0){bkflag=true} 
+                            const bktr = $('#chapterTabBody tr').filter(function() {
+                                return $(this).find('input[type=hidden][name=chapter]').val() == bkchkbox;
+                            });
+                            const bktd = bktr.find('td:eq(0)');
+                            if(bkflag == true){if(bktd.find('.checkmark').length<1){
+                                bktd.find('td:eq(0)').append(iele)}}  
+                            else{
+                                if(bktd.find('.checkmark').length>0){bktd.find('.checkmark').remove();}
+                            }
+                        }
+                    }); */
+                },
+                error: function(error) {
+                    console.log(error);
+                    
+                }
+            });
+              
+        }
+///////////////////EOC//////////////////////////////////
+
+
+        showCurrentRow(); // function call to show one hadith on the pagination table
+
+        // Function to show the current row and hide the others on the pagination table
+        function showCurrentRow(id) {
+            for (var i = 0; i < rows.length; i++) {
+                const input = rows[i].querySelector('input[type="hidden"]');
+                
+                if(id!="" && input.value==id){currentIndex = i;}
+                if (i == currentIndex) {
+                    rows[i].style.display = "table-row";
+                    
+                    hadrows = $("#hadTabbody tr");
+                    for (var j = 0; j < hadrows.length; j++) {
+                        const hadinput = hadrows[j].querySelector('input[type="hidden"]');
+                        const col = hadrows[j].querySelector('td:nth-child(2)');
+                        if(input.value == hadinput.value){
+                            var ahatab = $('#AhadithTable').parent('div')
+                            $(ahatab).animate({ scrollTop:  $(hadinput).closest('td').position().top -75 }, 500);
+                            //const bkscroll = $('input[type=checkbox][name=book]:checked');
+                            var chdbooktd = $('#bookTabBody td').filter(function() {
+                                return $(this).css('background-color') == chkdBgColor;
+                            });
+                            if (chdbooktd.length > 0) {
+                            $('#bkDiv').animate({ scrollTop:  chdbooktd.position().top   }, 500);}
+                            col.style.backgroundColor = 'rgb(24, 139, 240)';
+                            col.style.color = 'white';
+                        }else{col.style.backgroundColor = '';col.style.color = '';}
+                    }
+                    
+                    hadeethTabClick(input.value)
+                } else {
+                    rows[i].style.display = "none";
+                    
+                }
+                if(currentIndex==0){
+                    $('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
+                    $('#nav a[rel="nxtbtn"]').removeClass('w3-disabled');
+                }
+                else{
+                    $('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
+                    $('#nav a[rel="nxtbtn"]').removeClass('w3-disabled');
+                }
+            }
+            
+        }
+        
+        ////////////////////////EONext and previous button code including pagination////////////////////////
+
+        
+
+        /////function activate when chainComment lost focus
+        $("#chainComment").blur(function(){
+            
+            if ($(this).val().trim().length == 0)
+            {
+                $("#chainComment").attr("placeholder","ادخل ملاحضاتك حول سند الحديث");
+            }
+        });
+        
+        ///function for activate/deactivate Submit button
+        function check_submit() {
+            
+           if($(this).attr('id')!=undefined){
+                var val="";
+                if($(this).attr('id')=="hadeethComment"){
+                    val = $('#chainComment').val().trim();
+                }
+                else{
+                    val = $('#hadeethComment').val().trim();
+                }
+                if (($(this).val().trim().length == 0) && (val.length == 0)) {
+                    //$('#Submit_button').prop('disabled', true);
+                    //$('#Submit_button').removeClass('sbtbtn active');
+                    $('#Submit_button').addClass('sbtbtn active');
+                } else {
+                    $('#Submit_button').prop('disabled', false);
+                    $('#Submit_button').addClass('sbtbtn active');
+                }
+            }
+        }
+       /////Adding Sanad --->chkSanad change when checked display block
+        
+        $('#chkSanad').click(function() {
+            //alert("hello")
+            isBtnSanadClicked = !isBtnSanadClicked; // Toggle the click state
+            //if(this.checked) {
+            if (isBtnSanadClicked) {
+                $("#addSanadTable").css('display','block');
+            }
+            else{
+                $("#addSanadTable").css('display','none');
+                $("#tableSanadList").find("td").each(function(){
+                    id = $(this).attr('id');
+                    //$(this).remove();
+                }) 
+            }     
+        });
+        function clear_chklist(){
+            moal_count = 1
+            btnFlag = 1
+            //$highlights.html("");
+            isBtnSanadClicked = false;
+            $('#chkMoallaka').prop('checked', false);
+            $("#addSanadTable").css('display','none');
+            $("#addMoalaTable").css('display','none');
+            $("#addMoalaTable").find("div").each(function(){
+                id = $(this).attr('id');
+                $(this).closest("tr").remove();
+            })
+            $("#tableSanadList").find("td").each(function(){
+                id = $(this).attr('id');
+                $(this).remove();
+            })
+            hidePopup();
+        }
+        
+        $("#tableSanadList").on('click','#btnSanad', function() {
+            var clickedIndex = $(this).closest('td').index();
+            flag=0
+            $("#btnDivSanad").find("select").each(function(){
+                if($(this).val()==0){
+                    flag = 1;
+                }
+            })
+            if(flag == 0)
+            {
+                com = getDropDownList(0)
+                var tr = $(this).closest('tr');
+                var td = $('<td ></td>')
+                td.append(com)
+                com.select2({
+                }).on('select2:open',function(){
+
+                    $('.select2-container--above').attr('id','fix');
+                    $('#fix').removeClass('select2-container--above').addClass('select2-container--below');
+        
+                });
+
+                td.append('<button type="button" id="btnSanad" class="add">+</button>')
+                var targetTd = tr.find('td').eq(clickedIndex);
+                if (targetTd.length > 0) {
+                    targetTd.after(td);
+                } else {
+                    tr.append(td);
+                }
+            }
+
+        });
+
+        //function to fill dynamically created combo for adding new node to the Sanad  
+        function getDropDownList(sel_id) {
+            var combo = $('<select data-search="true" name="input_text2" data-max-height="200px" style="width: 150px"><option value="0">...اختر الراوي</option></select>')
+            //var combo = $('<select data-dselect-search="true" data-dselect-creatable="true" data-dselect-clearable="true" name= "input_text2" data-dselect-max-height="200px" data-dselect-size="sm" class="form-select"  ><option value="0">اختر الراوي</option></select>');
+            for(var n=0;n<narrator_list.length;n++){
+                var doc = narrator_list[n]
+                var option = new Option(doc['narrator_ar'], doc['_id']);
+                if(sel_id == doc['_id']){
+                    option.selected = true;
+                } 
+                combo.append(option).trigger('change');
+                 
+            }
+            
+            return combo;
+        }    
+        
+
+        //function to fill dynamically created combo for adding new node to the Moallakka 
+        function moalList(count,sel_it) {
+            var combo = $('<select data-search="true" name= "input_text1'+count+'" data-max-height="200px" style="width: 150px"  ><option value="0">...اختر الراوي</option></select>');
+            for(var n=0;n<narrator_list.length;n++){
+                var doc = narrator_list[n]
+                var option = new Option(doc['narrator_ar'], doc['_id']);
+                if(sel_it == doc['_id']){
+                    option.selected = true;
+                } 
+                combo.append(option).trigger('change');
+            }
+            return combo;
+        }
+        
+        $(document).on('click','#btnAddAuth',function(){
+            $td=$(this).closest('td');
+            cnt = $td.attr('id');
+            com = moalList(cnt,0);
+            $('#tableMoalList'+cnt+'> tbody tr:last-child').append('<td></td>')
+            $("#tableMoalList"+cnt+"> tbody tr td:last-child").append(com)
+            com.select2({
+            }).on('select2:open',function(){
+
+                $('.select2-container--above').attr('id','fix');
+                $('#fix').removeClass('select2-container--above').addClass('select2-container--below');
+    
+            });
+        });
+        
+        $("#btnAddChain").on('click',function() {
+            com = moalList(moal_count,0);
+            $('#addMoalaTable > tbody:last-child').append('<tr><td id="'+moal_count+'"><div id="btnDivMoallakka'+moal_count+
+            '"></div><button type="button" id="btnAddAuth" class="add" >+</button></td></tr>');
+            $("#btnDivMoallakka"+moal_count).append('<table id="tableMoalList'+moal_count+'"><tr><td></td></tr></table>')
+            $("#tableMoalList"+moal_count+"> tbody tr td:last-child").append(com)
+            com.select2({
+            }).on('select2:open',function(){
+
+                $('.select2-container--above').attr('id','fix');
+                $('#fix').removeClass('select2-container--above').addClass('select2-container--below');
+    
+            });
+            moal_count = moal_count+1
+        });
+
+        ///////////Adding Moallakka --->chkMoallaka change when checked display block
+        $('#chkMoallaka').change(function() {
+            if(this.checked) {
+                moal_count = 1
+                $("#addMoalaTable").css('display','block');
+                for (var i= 0 ;i<moallaka_list.length;i++){
+                    var doc = moallaka_list[i]
+                    $('#addMoalaTable > tbody:last-child').append('<tr><td id="'+moal_count+'"><div id="btnDivMoallakka'+moal_count+'"></div><button type="button" id="btnAddAuth" class="add" >+</button></td></tr>');
+                    $("#btnDivMoallakka"+moal_count).append('<table id="tableMoalList'+moal_count+'"><tr></tr></table>')
+                    for(var d = 0;d<doc.length;d++){
+                        var dat = doc[d];
+                        com = moalList(moal_count,dat[0]);
+                        $('#tableMoalList'+moal_count+'> tbody tr:last-child').append('<td></td>')
+                        $("#tableMoalList"+moal_count+"> tbody tr td:last-child").append(com)
+                        com.select2({
+                        }).on('select2:open',function(){
+        
+                            $('.select2-container--above').attr('id','fix');
+                            $('#fix').removeClass('select2-container--above').addClass('select2-container--below');
+                
+                        });
+                    }
+                    moal_count = moal_count + 1
+                    $('#moalaTable > tbody:last-child').append('<tr></tr>')
+                } 
+            }
+            else{
+                moal_count = 1
+                $("#addMoalaTable").css('display','none');
+                $("#addMoalaTable").find("div").each(function(){
+                    id = $(this).attr('id');
+                    $(this).closest("tr").remove();
+                })
+            }     
+        });
+      
+
+ 
+
+// Function to show the popup window for Narrators details
+        function showPopup() {
+            $('.popup-overlay').show();
+        }
+        // Function to hide the popup window
+        function hidePopup() {
+            $('.popup-overlay').hide();
+            
+        }
+        // Function for the close button click
+        $('.close').click(function() {
+            hidePopup();
+        });
+        function updateCollectionTable(){
+            $.ajax({url:"/getcollection",
+                type:"POST",
+                contentType: 'application/json',
+                //data:JSON.stringify(coll_data),
+                success:function(result){
+                    let selector = document.getElementById("collectionTabBody");
+                    collection = result.collection;
+                    
+                for (var i=0;i<collection.length;i++){
+                    var doc = collection[i]
+                    if(doc["flag"] == 0)
+                    {
+                        var chdColltr = $('#collectionTabBody tr').filter(function() {
+                        return $(this).find('input[type=hidden][name=collection]').val() == doc["_id"] & $(this).find('.deleteRow').length==0;
+                        });
+                        if(chdColltr.find('td:eq(1)').css('background-color')!=chkdBgColor){
+                            const dropdownDiv = '<a href="" class="deleteRow" rel="del"><i class="fa fa-minus w3-text-theme" style="font-size:15px"></i></a>' 
+                            chdColltr.find('td:eq(0)').append(dropdownDiv)                                     
+                        }
+                        
+                    }
+                }
+            }});
+            
+            
+        }
+////////////////////////////////////EOC/////////////////////////////
+////////////////////////////////////////////////////////////////////
+        $("#collectionTabBody").on('click','td>p', function() {
+            if($(this).closest('td').css('background-color') != chkdBgColor){
+                const hiddenInputValue = $(this).closest('td').find('input[type="hidden"]').val();
+                
+                $("#collectionTabBody td").css({backgroundColor: '',color: ''});
+                
+                
+                updateCollName(this);
+                let delrow = $(this).closest('tr').find('.deleteRow')
+                if(delrow.length>0){delrow.remove();}    
+                $('#chainTable tbody').empty();
+                $('#moalaTable tbody').empty();
+                $('#responseTab').css('display','none');
+                $('#hadeeth tbody').empty();
+                $('#hadTabbody').empty();
+                $('#bookTabBody').empty();
+                $('#chapterTabBody').empty();// third card
+                $('#hadpopup1').hide();
+                hidePopup()
+                $(this).closest('td').css('backgroundColor', 'rgb(24, 139, 240)');
+                $(this).closest('td').css('color', 'white');
+                updateCollectionTable();
+                
+                var coll_data={collection:hiddenInputValue,book:"",chapter:""};
+                $.ajax({url:"/gethadithinfo",
+                    type:"POST",
+                    contentType: 'application/json',
+                    data:JSON.stringify(coll_data),
+                    
+                    success:function(result){
+                        var book = result.book; //fill the third card in html
+                        newBookTable(book);
+                        if(btnFlag == 0){
+                            var chdBooktd = $('#bookTabBody td').filter(function() {
+                            return $(this).css('background-color') == chkdBgColor;
+                            });
+                            const bkchk = chdBooktd.find('p');
+                            $(bkchk).trigger('click');}
+                        else{
+                            var chap = result.chap;
+                            newChapterTable(chap);
+                            var hadith = result.hadith //fill the first and third cards in html
+                            newHadithTable(hadith)
+                        }
+                        rows = $("#hadeeth tbody tr");
+                        if(btnFlag == 1){currentIndex = 0;}
+                        else if(btnFlag == 0){currentIndex = rows.length - 1;}
+                        
+                        showCurrentRow() 
+                        if(book.length==0){ 
+                            $("#addTDKetab").css("pointer-events", "none");
+                            $("#addTDKetab").css("color", "gray");
+                            $("#addTD").css("pointer-events", "none");
+                            $("#addTD").css("color", "gray"); 
+                            
+                        }
+                        
+                            
+                    },
+                    error: function(error) {
+                        console.log(error);
+                    }
+                });
+                
+            }   
+            
+        });
+/////////////////////////////collectionTabBody save,edit & del button////////////////////////////////
+        $('#collectionTabBody').on('click', 'a[rel="edit"], a[rel="save"], a[rel="del"]', function (event) {
+            event.preventDefault();
+            const relval = $(this).attr('rel');
+            const td = this.closest('tr').querySelector('td:nth-child(2)');
+            
+            
+            const collectionId = $(td).find('input[type="hidden"][name="collection"]').val();
+            if(relval == "edit"){
+                
+                const alltd = document.querySelectorAll('#collectionTabBody tr td:nth-child(2)');
+                alltd.forEach(function (ele) {
+                    ele.removeAttribute('contenteditable');
+                });
+                // Select the second td to make it editable
+                td.setAttribute('contenteditable', 'true');
+                $(td).addClass('w3-edittd');
+                td.focus();
+                const anchorele = $(td).closest('tr').find('a[rel="edit"]')
+                anchorele.attr('rel','save')
+                const iele = anchorele.closest('td').find('i')
+                iele.removeClass('fa fa-edit').addClass('fa fa-save w3-text-theme');
+            }
+            else if(relval == "save"){
+                
+                if(collectionId=="" ){
+                    if($(td).text().trim()!=""){
+                        var collData = {
+                            'collection':$(td).text().trim()
+                        };
+                        $.ajax({url:"/insertcollection",
+                            type:"POST",
+                            contentType: 'application/json',
+                            data:JSON.stringify(collData),
+                            success:function(result){
+                                
+
+                                const pele = document.createElement('p');
+                                td.appendChild(pele);
+                                $(td).closest('tr').find('p').text($(td).text().trim()); 
+                                $(td).contents().filter(function(){return this.nodeType===3;}).remove()
+                                $(td).closest('tr').find('input[type="hidden"]').val(result);
+                                const anchorele = $(td).closest('tr').find('a[rel="save"]')
+                                anchorele.attr('rel','edit')
+                                const anchordel = $(td).closest('tr').find('a[rel="del"]')
+                                const tddel = anchordel.closest('td')
+                                anchordel.remove();
+                                const dropdownDiv = '<a href="" class="deleteRow" rel="del"><i class="fa fa-minus w3-text-theme" style="font-size:15px"></i></a>' 
+                                tddel.append(dropdownDiv);
+                                $(td).removeClass("w3-edittd")
+                                const iele = anchorele.closest('td').find('i')
+                                iele.removeClass('fa fa-save').addClass('fa fa-edit w3-text-theme');
+                                
+                                
+                            }
+                        }); 
+                    }else{$(td).focus();}
+                }else if(collectionId!=""){
+                    if($(td).text().trim()!=""){
+                        var collData = {
+                            'collection':$(td).text().trim(),
+                            'id': collectionId
+                        };
+                        $.ajax({url:"/updatecollection",
+                            type:"POST",
+                            contentType: 'application/json',
+                            data:JSON.stringify(collData),
+                            success:function(result){
+                                const anchorele = $(td).closest('tr').find('a[rel="save"]')
+                                $(td).removeClass("w3-edittd")
+                                anchorele.attr('rel','edit')
+                                const iele = anchorele.closest('td').find('i')
+                                iele.removeClass('fa fa-save').addClass('fa fa-edit w3-text-theme');
+                                updateCollName($(td).find('p'))
+                            }
+                        }); 
+                    }
+                }
+                td.setAttribute('contenteditable', 'false');
+            }
+            else if(relval == "del"){
+                if($(td).text().trim()==""){$(td).closest('tr').remove();}
+                else{
+                    var collData = {
+                        'collection':$(td).closest('tr').find('input[type="hidden"]').val()
+                    };
+                    if (collData['collection'].trim()==""){$(td).closest('tr').remove();}
+                    else{
+                        $.ajax({url:"/deletecollection",
+                            type:"POST",
+                            contentType: 'application/json',
+                            data:JSON.stringify(collData),
+                            success:function(result){
+                                if($(td).css('background-color')==chkdBgColor){
+                                    let nxttr = $(td).parent('tr').next();
+                                    if(nxttr.index()>0){nxttr.find('td>p').trigger('click');}
+                                    else{nxttr = $(td).parent('tr').prev();
+                                        if(nxttr.index()>0){nxttr.find('td>p').trigger('click');}}
+                                
+                                }
+                                $(td).closest('tr').remove();
+                                
+                                
+                            }
+                        });
+                    }
+                }
+                
+            }
+            
+        });
+/////////////////////////////bookTabBody save,edit & del button////////////////////////////////
+        $("#bookTabBody").on('click','td>p', function() {
+            
+            //if($(this).closest('td').css('background-color') != chkdBgColor)
+            //{
+                const hiddenInputValue = $(this).closest('td').find('input[type="hidden"]').val();
+                $("#bookTabBody td").css({backgroundColor: '',color: ''});
+                updateBookName(this);
+                let delrow = $(this).closest('tr').find('.deleteRow')
+                if(delrow.length>0){delrow.closest('td').html('')}   
+                $("#addTDKetab").css("pointer-events", "auto");
+                $("#addTDKetab").css("color", "black");
+                $("#addTD").css("pointer-events", "none");
+                $("#addTD").css("color", "gray"); 
+                //$("#addTD").css("pointer-events", "auto");
+                //$("#addTD").css("color", "black");
+                $(this).closest('td').css('backgroundColor', 'rgb(24, 139, 240)');
+                $(this).closest('td').css('color', 'white');
+                $('#chainTable tbody').empty();
+                $('#moalaTable tbody').empty();
+                $('#responseTab').css('display','none');
+                $('#hadeeth tbody').empty();
+                $('#hadTabbody').empty();
+                $('#hadpopup1').hide();
+                hidePopup()
+                var chdcolltd = $('#collectionTabBody td').filter(function() {
+                    return $(this).css('background-color') == chkdBgColor;
+                });
+                if(chdcolltd.length>0){updateBookTable(chdcolltd.find('input[type=hidden][name=collection]').val())};
+                var book_data={data_book:hiddenInputValue};
+                    
+                //getchapters and their hadiths based on the book
+                $.ajax({url:"/getchapter",
+                    type:"POST",
+                    contentType: 'application/json',
+                    data:JSON.stringify(book_data),
+                    success:function(result){
+                        
+                        var chap = result.chap; //fill the third card in html
+                        newChapterTable(chap);
+                        var checkedtd = $('#chapterTabBody td').filter(function() {
+                            return $(this).css('background-color') == chkdBgColor;
+                        });if(checkedtd.length>0)
+                        {$("#addTD").css("pointer-events", "auto");
+                        $("#addTD").css("color", "black");$('#chDiv').animate({ scrollTop:  checkedtd.closest('tr').position().top  }, 500);}
+                        
+                        var hadith = result.hadith //fill the first and third cards in html
+                        newHadithTable(hadith)
+                        
+                        rows = $("#hadeeth tbody tr");
+                        if(btnFlag == 1){currentIndex = 0;}
+                        else if(btnFlag == 0){currentIndex = rows.length - 1;}
+                        showCurrentRow()
+                        
+                        
+                    },
+                    error: function(error) {
+                        console.log(error);
+                    }
+                });
+            //}
+        });//currently working on 
+
+        $('#bookTabBody').on('click', 'a[rel="edit"], a[rel="save"], a[rel="del"]', function (event) {
+            event.preventDefault();
+            const relval = $(this).attr('rel');
+            var chdcolltd = $('#collectionTabBody td').filter(function() {
+                return $(this).css('background-color') == chkdBgColor;
+            });
+            const selectedCollId = chdcolltd.find('input[type=hidden][name=collection]').val();
+               
+            const td = this.closest('tr').querySelector('td:nth-child(2)');
+            const bookId = $(td).find('input[type="hidden"][name="bookHidden"]').val();
+            if(relval == "edit"){
+                
+                const alltd = document.querySelectorAll('#bookTabBody tr td:nth-child(2)');
+                alltd.forEach(function (ele) {
+                    ele.removeAttribute('contenteditable');
+                });
+                // Select the second td to make it editable
+                td.setAttribute('contenteditable', 'true');
+                $(td).addClass('w3-edittd');
+                td.focus();
+                const anchorele = $(td).closest('tr').find('a[rel="edit"]')
+                anchorele.attr('rel','save')
+                const iele = anchorele.closest('td').find('i')
+                iele.removeClass('fa fa-edit').addClass('fa fa-save w3-text-theme');
+            }
+            else if(relval == "save"){
+                 if(bookId=="" ){
+                    if($(td).text().trim()!=""){
+                        var bookData = {
+                            'booktitle_ar':$(td).text(),
+                            'collection': selectedCollId
+                        };
+                        $.ajax({url:"/insertbook",
+                            type:"POST",
+                            contentType: 'application/json',
+                            data:JSON.stringify(bookData),
+                            success:function(result){
+                                if(chdcolltd.closest('tr').find('.checkmark').length>0){chdcolltd.closest('tr').find('.checkmark').remove();}
+                                const pele = document.createElement('p');
+                                td.appendChild(pele);
+                                $(td).closest('tr').find('p').text($(td).text().trim()); 
+                                $(td).contents().filter(function(){return this.nodeType===3;}).remove()
+                                $(td).closest('tr').find('input[type="hidden"]').val(result[0]);
+                                const anchorele = $(td).closest('tr').find('a[rel="save"]')
+                                anchorele.attr('rel','edit')
+                                const anchordel = $(td).closest('tr').find('a[rel="del"]')
+                                const tddel = anchordel.closest('td')
+                                anchordel.remove();
+                                const dropdownDiv = '<a href="" class="deleteRow" rel="del"><i class="fa fa-minus w3-text-theme" style="font-size:15px"></i></a>' 
+                                                       
+                                tddel.append(dropdownDiv);
+                                $(td).removeClass("w3-edittd")
+                                const iele = anchorele.closest('td').find('i')
+                                iele.removeClass('fa fa-save').addClass('fa fa-edit w3-text-theme');
+                                
+                            }
+                        }); 
+                    }else{$(td).focus();}
+                }else if(bookId!=""){
+                    if($(td).text().trim()!=""){
+                        var bookData = {
+                            'booktitle_ar':$(td).text().trim(),
+                            'id': bookId
+                        };
+                        $.ajax({url:"/updatebook",
+                            type:"POST",
+                            contentType: 'application/json',
+                            data:JSON.stringify(bookData),
+                            success:function(result){
+                                const anchorele = $(td).closest('tr').find('a[rel="save"]')
+                                $(td).removeClass("w3-edittd")
+                                anchorele.attr('rel','edit')
+                                const iele = anchorele.closest('td').find('i')
+                                iele.removeClass('fa fa-save').addClass('fa fa-edit w3-text-theme');
+                                updateBookName($(td).find('p'));
+                            }
+                        }); 
+                    }
+                }
+                td.setAttribute('contenteditable', 'false');
+            }
+            else if(relval == "del"){
+                if($(td).text().trim()==""){$(td).closest('tr').remove();}
+                else{
+                    var bookData = {
+                        'book' : $(td).closest('tr').find('input[type="hidden"]').val(),
+                        'collection':selectedCollId
+                    };
+                    if (bookData['book'].trim()==""){$(td).closest('tr').remove();}
+                    else{
+                        $.ajax({url:"/deletebook",
+                            type:"POST",
+                            contentType: 'application/json',
+                            data:JSON.stringify(bookData),
+                            success:function(result){
+                                if($(td).css('background-color')==chkdBgColor){
+                                    let nxttr = $(td).parent('tr').next();
+                                    if(nxttr.index()>0){nxttr.find('td>p').trigger('click');}
+                                    else{nxttr = $(td).parent('tr').prev();
+                                        if(nxttr.index()>0){nxttr.find('td>p').trigger('click');}}
+                                
+                                }
+                                $(td).closest('tr').remove();
+                                //updateBookName()
+                                $.ajax({url:"/getcollection",
+                                type:"POST",
+                                contentType: 'application/json',
+                                //data:JSON.stringify(coll_data),
+                                success:function(result){
+                                    collection = result.collection;
+                    const cltr = $('#collectionTabBody tr').filter(function() {
+                        return $(this).find('input[type=hidden][name=collection]').val() == selectedCollId;
+                    });
+                    const cltd = cltr.find('td:eq(0)');
+                    for (var i=0;i<collection.length;i++){
+                        var doc = collection[i];
+                        if(doc['_id'] == selectedCollId){
+                            if(doc['save_flag'] == true ){if(cltd.find('.checkmark').length==0){
+                                const iele3 = document.createElement("i");
+                                iele3.className = "checkmark w3-text-theme";
+                                iele3.style.fontSize = "15px";
+                                iele3.id = selectedCollId;
+                                cltd.append(iele3);}}
+                            else{
+                                if(cltd.find('.checkmark').length>0){cltd.find('.checkmark').remove()}
+                            }
+                        }
+                    }
+                }});
+
+                                //delete success ends here
+                            }
+                        });
+                    }
+                }
+            }
+            
+        });
+        
+//////////////////////////////chapterTabBody save,edit & del button////////////////////////////////
+        $("#chapterTabBody").on('click','td>p', function() {
+            if($(this).closest('td').css('background-color') != chkdBgColor){
+
+                const hiddenInputValue = $(this).closest('td').find('input[type="hidden"]').val();
+                let delrow = $(this).closest('tr').find('.deleteRow')
+                if(delrow.length>0){delrow.closest('td').html('')}  
+                $("#chapterTabBody td").css({backgroundColor: '',color: ''});
+                
+                $(this).closest('td').css('backgroundColor', 'rgb(24, 139, 240)');
+                $(this).closest('td').css('color', 'white');
+                $("#addTD").css("pointer-events", "auto");
+                $("#addTD").css("color", "black");
+                $('#chainTable tbody').empty();
+                $('#moalaTable tbody').empty();
+                $('#responseTab').css('display','none');
+                $('#hadeeth tbody').empty();
+                $('#hadTabbody').empty();
+                $('#hadpopup1').hide();
+                hidePopup()
+                var chdbooktd = $('#bookTabBody td').filter(function() {
+                    return $(this).css('background-color') == chkdBgColor;
+                });
+                if(chdbooktd.length>0){updatechapterTable(chdbooktd.find('input[type=hidden][name=bookHidden]').val())};
+                
+                    //old_chapter_id = this.value
+                $.ajax({url:"/updatehadith",
+                    type:"POST",
+                    dataType:'json',
+                    data:{data_chapter: hiddenInputValue},
+                    success:function(result){
+                        var data = result.data1;
+                        newHadithTable(data);
+                        
+                        rows = $("#hadeeth tbody tr");
+                        if(btnFlag == 1){currentIndex = 0;}
+                        else if(btnFlag == 0){currentIndex = rows.length - 1;}
+                        showCurrentRow();
+                            
+                    },
+                    error: function(error) {
+                        console.log(error);
+                    }
+                });
+            }
+            
+
+        });
+        $('#chapterTabBody').on('click', 'a[rel="edit"], a[rel="save"], a[rel="del"]', function (event) {
+            event.preventDefault();
+            const relval = $(this).attr('rel');
+            var chdbooktd = $('#bookTabBody td').filter(function() {
+                return $(this).css('background-color') == chkdBgColor;
+            });
+            var chdcolltd = $('#collectionTabBody td').filter(function() {
+                return $(this).css('background-color') == chkdBgColor;
+            });
+            const selectedCollId = chdcolltd.find('input[type=hidden][name=collection]').val();
+            const selectedBookId = chdbooktd.find('input[type=hidden][name=bookHidden]').val();
+            const td = this.closest('tr').querySelector('td:nth-child(2)');
+            const chapterId = $(td).find('input[type="hidden"][name="chapter"]').val();
+            if(relval == "edit"){
+                
+                const alltd = document.querySelectorAll('#chapterTabBody tr td:nth-child(2)');
+                alltd.forEach(function (ele) {
+                    ele.removeAttribute('contenteditable');
+                });
+                // Select the second td to make it editable
+                td.setAttribute('contenteditable', 'true');
+                $(td).addClass('w3-edittd');
+                td.focus();
+                const anchorele = $(td).closest('tr').find('a[rel="edit"]')
+                anchorele.attr('rel','save')
+                const iele = anchorele.closest('td').find('i')
+                iele.removeClass('fa fa-edit').addClass('fa fa-save w3-text-theme');
+            }
+            else if(relval == "save"){
+                if(chapterId=="" ){
+                    if($(td).text().trim()!=""){
+                        var chData = {
+                            'arChapter':$(td).text(),
+                            'book': selectedBookId
+                        };
+                        $.ajax({url:"/insertchapter",
+                            type:"POST",
+                            contentType: 'application/json',
+                            data:JSON.stringify(chData),
+                            success:function(result){
+                                if(chdbooktd.closest('tr').find('.checkmark').length>0){chdbooktd.closest('tr').find('.checkmark').remove()}
+                                if(chdcolltd.closest('tr').find('.checkmark').length>0){chdcolltd.closest('tr').find('.checkmark').remove()}
+                                const pele = document.createElement('p');
+                                td.appendChild(pele);
+                                $(td).closest('tr').find('p').text($(td).text().trim()); 
+                                $(td).contents().filter(function(){return this.nodeType===3;}).remove()
+                                $(td).closest('tr').find('input[type="hidden"]').val(result);
+                                const anchorele = $(td).closest('tr').find('a[rel="save"]')
+                                anchorele.attr('rel','edit')
+                                $(td).removeClass("w3-edittd")
+                                const iele = anchorele.closest('td').find('i')
+                                iele.removeClass('fa fa-save').addClass('fa fa-edit w3-text-theme');
+                                
+                            }
+                        }); 
+                    }else{$(td).focus();}
+                }else if(chapterId!=""){
+                    if($(td).text().trim()!=""){
+                        var chData = {
+                            'arChapter':$(td).text().trim(),
+                            'id': chapterId
+                        };
+                        $.ajax({url:"/updatechapter",
+                            type:"POST",
+                            contentType: 'application/json',
+                            data:JSON.stringify(chData),
+                            success:function(result){
+                                const anchorele = $(td).closest('tr').find('a[rel="save"]')
+                                $(td).removeClass("w3-edittd")
+                                anchorele.attr('rel','edit')
+                                const iele = anchorele.closest('td').find('i')
+                                iele.removeClass('fa fa-save').addClass('fa fa-edit w3-text-theme');
+                                //updateBookName($(td).find('p'));
+                            }
+                        }); 
+                    }
+                }
+                td.setAttribute('contenteditable', 'false');
+            }
+            else if(relval == "del"){
+                if($(td).text().trim()==""){$(td).closest('tr').remove();}
+                else{
+                    var chData = {
+                        'chapter':$(td).closest('tr').find('input[type="hidden"]').val(),
+                        'book':selectedBookId
+                    };
+                    if (chData['chapter'].trim()==""){$(td).closest('tr').remove();}
+                    else{
+                        $.ajax({url:"/deletechapter",
+                            type:"POST",
+                            contentType: 'application/json',
+                            data:JSON.stringify(chData),
+                            success:function(result){
+                                $(td).closest('tr').remove();
+                        
+
+                                var coll_data={collection:selectedCollId,book:selectedBookId,chapter:''};
+                                $.ajax({url:"/gethadithinfo",
+                                type:"POST",
+                                contentType: 'application/json',
+                                data:JSON.stringify(coll_data),
+                                success:function(result){
+                                    var data = result.hadith;
+                                    var book = result.book
+                                    let chapter = result.chap;
+                                    var collection = result.collection;
+                                    
+                                    const bktr = $('#bookTabBody tr').filter(function() {
+                                        return $(this).find('input[type=hidden][name=bookHidden]').val() == selectedBookId;
+                                    });
+                                    const bktd = bktr.find('td:eq(0)');
+                                    for (var i=0;i<book.length;i++){
+                                        var doc = book[i];
+                                        if(doc[0] == selectedBookId){
+                                            if(doc[3] == true ){if(bktd.find('.checkmark').length==0){
+                                                const iele3 = document.createElement("i");
+                                                iele3.className = "checkmark w3-text-theme";
+                                                iele3.style.fontSize = "15px";
+                                                iele3.id = selectedBookId;
+                                                bktd.append(iele3);}}
+                                            else{
+                                                if(bktd.find('.checkmark').length>0){bktd.find('.checkmark').remove()}
+                                            }
+                                        }
+                                    }
+                                    const colltr = $('#collectionTabBody tr').filter(function() {
+                                        return $(this).find('input[type=hidden][name=collection]').val() == selectedCollId;
+                                    });
+                                    const colltd = colltr.find('td:eq(0)');
+                                    for (var i=0;i<collection.length;i++){
+                                        var doc = collection[i];
+                                        if(doc[0] == selectedCollId){
+                                            if(doc[3] == true ){if(colltd.find('.checkmark').length==0){
+                                                const iele = document.createElement("i");
+                                                iele.className = "checkmark w3-text-theme";
+                                                iele.style.fontSize = "15px";
+                                                iele.id = selectedCollId;
+                                                colltd.append(iele);}}
+                                            else{
+                                                if(colltd.find('.checkmark').length>0){colltd.find('.checkmark').remove()}
+                                            }
+                                        }
+                                    }
+                                }});    
+                                
+                            }
+                        });
+                    }
+                }
+            }
+            
+        });
+///////////////////Add New collection, book and chapter ////////////////////////////////////////////////
+        $('#addTD').on('click', function (){ 
+            
+            const newrow = `<tr>
+                                <td style="text-align: center; width:5px">
+                                    <a href="" class="deleteRow" rel="del">
+                                        <i class="fa fa-minus w3-text-theme" style="font-size:15px"></i>
+                                    </a>
+                                </td>
+                                <td style="text-align: right; white-space:wrap; word-break: break-all; width: 150px; max-width: 150px;"class="w3-edittd"  contenteditable="true">
+                                    <input type="hidden"  id="hadithid_card" name="hadithid_card" value="" /></td>
+                                <td style="text-align: left; width:2px;padding-left: 2%; ">
+                                    <a href="" rel="save">
+                                        <i class="fa fa-save w3-text-theme" rel="save" style="font-size:15px"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            `
+            $('#hadTabbody').prepend(newrow);
+            const td = $('#hadTabbody tr:first-child td[contenteditable="true"] ');
+            //const pInsideTd = td.find('p');
+            
+           setTimeout(function () { td.focus(); }, 50);
+        });
+        $('#addCollection').on('click', function (){
+            if(collcontentDivs.classList != "expanded"){$(coll_header).trigger('click');}
+            
+            const newrow = `
+                            <tr>
+                                <td style="text-align: center; width:5px">
+                                <a href="" class="deleteRow" rel="del">
+                                    <i class="fa fa-minus w3-text-theme" style="font-size:15px"></i>
+                                </a>
+                                </td>
+                                <td style="text-align: right; white-space:wrap; word-break: break-all; width: 150px; max-width: 150px; "class="w3-edittd"  contenteditable="true">
+                                <input type="hidden"  id="collection" name="collection" value="" /></td>
+                                <td style="text-align: left; width:2px;padding-left: 2%; ">
+                                <a href="" rel="save">
+                                    <i class="fa fa-save w3-text-theme" rel="save" style="font-size:15px"></i>
+                                </a>
+                                </td>
+                            </tr>
+                            `;
+            $('#collectionTabBody').prepend(newrow)
+
+            const td = $('#collectionTabBody tr:first-child td[contenteditable="true"]');
+            
+            
+           setTimeout(function () { td.focus(); }, 50);
+        });
+        $('#addBook').on('click', function (){
+            if(bookContentDivs.classList != "expanded"){$(book_header).trigger('click');}
+            const newrow = `
+                            <tr>
+                                <td style="text-align: center; width:5px">
+                                <a href="" class="deleteRow" rel="del">
+                                    <i class="fa fa-minus w3-text-theme" style="font-size:15px"></i>
+                                </a>
+                                </td>
+                                <td style="text-align: right; white-space:wrap; word-break: break-all; width: 150px; max-width: 150px; "class="w3-edittd"  contenteditable="true">
+                                <input type="hidden"  id="bookHidden" name="bookHidden" value="" /></td>
+                                <td style="text-align: left; width:2px;padding-left: 2%; ">
+                                <a href="" rel="save">
+                                    <i class="fa fa-save w3-text-theme" rel="save" style="font-size:15px"></i>
+                                </a>
+                                </td>
+                            </tr>
+                            `;
+            $('#bookTabBody').prepend(newrow)
+
+            const td = $('#bookTabBody tr:first-child td[contenteditable="true"] ');
+            
+            
+           setTimeout(function () { td.focus(); }, 50);
+        });
+        $('#addTDKetab').on('click', function (){
+            if(chapterContentDivs.classList != "expanded"){$(chap_header).trigger('click');} 
+            const newrow = `
+                            <tr>
+                            <td style="text-align: center; width:5px">
+                                <a href="" class="deleteRow" rel="del">
+                                    <i class="fa fa-minus w3-text-theme" style="font-size:15px"></i>
+                                </a>
+                                </td>
+                                <td style="text-align: right; white-space:wrap; word-break: break-all; width: 150px; max-width: 150px; "class="w3-edittd"  contenteditable="true">
+                                <input type="hidden"  id="chapter" name="chapter" value="" /></td>
+                                <td style="text-align: left; width:2px;padding-left: 2%; ">
+                                <a href="" rel="save">
+                                    <i class="fa fa-save w3-text-theme" rel="save" style="font-size:15px"></i>
+                                </a>
+                                </td>
+                            </tr>
+                            `;
+            $('#chapterTabBody').prepend(newrow)
+
+            const td = $('#chapterTabBody tr:first-child td[contenteditable="true"] ');
+            //const pInsideTd = td.find('p');
+            
+           setTimeout(function () { td.focus(); }, 50);
+        });
+          /////////////////////////////////////////////////////////////////
+///////////////////Collapsible Table ////////////////////////////////////////////////
+    function updateCollName(chkcoll) {
+        var collName = $(chkcoll).text();
+        let hele = document.createElement('h4');
+        hele.textContent = "المجموعة:" + collName;
+        $('#coll_name').html(hele);
+    }
+
+
+// Trigger change event on page load for initially checked checkboxes
+var chdcolltd = $('#collectionTabBody td').filter(function() {
+    return $(this).css('background-color') == chkdBgColor;
+});
+updateCollName(chdcolltd.find('p'));
+/////////////////////Display Book name //////////////////////////////
+function updateBookName(chkbook) {
+    var bookName = $(chkbook).text();
+    let hele = document.createElement('h4');
+    hele.textContent = "الكتاب :"+bookName;
+    $('#book_name').html(hele);
+    
+}
+
+// Attach change event handler
+
+
+// Trigger change event on page load for initially checked checkboxes
+var chdbooktd = $('#bookTabBody td').filter(function() {
+    return $(this).css('background-color') == chkdBgColor;
+});
+updateBookName(chdbooktd.find('p'));
+////////////////////////////////////////////////////////////////
+function adjustTitleBlock2Height() {
+    setTimeout(function() {
+        var allDivs = $("#TitleBlock2 > div");
+        var visibleDivs = $("#TitleBlock2 > div:visible");
+        var totalHeight = $("#TitleBlock2").outerHeight();
+
+        // Check if there are visible divs
+        if (visibleDivs.length > 0) {
+            //var heightPerDiv = Math.floor(totalHeight / visibleDivs.length);
+            var heightPerDiv = totalHeight / visibleDivs.length;
+
+            // Set height only for visible divs
+            visibleDivs.css({
+                height: heightPerDiv,
+                //boxSizing: "border-box",
+                //margin: 0
+            });
+        }
+
+        // Set height to 0 for hidden divs
+        allDivs.not(":visible").css({
+            height: "",
+            //boxSizing: "border-box",
+            //margin: 0
+        });
+    }, 100); // Add a small delay (adjust the value as needed)
+}
+
+
+
+
+        
+   //////////////////////////////////////////////////////////////
+   $( "#go1" ).on( "click", function() {
+    if($("#go1").hasClass("fa-expand"))
+    {
+      
+        $( "#block1" ).css("width", "45%")
+        $("#TitleBlock2").css("display","inline-block")
+        $( "#TitleBlock2" ).css("width", "5%")
+        $("#TitleBlock1").css("display","none")
+        $( "#block2" ).css("display", "none")
+        $("#go1").removeClass("fa-expand");
+        $("#go1").addClass("fa-minus");
+        $("#go1").css("fontSize", "10px");
+        adjustTitleBlock2Height();
+    }
+    else
+    {
+      $( "#block1" ).css({width: "",fontSize: "",borderWidth: ""});
+      $("#TitleBlock2").css("display","none")
+      $( "#TitleBlock2" ).css("width", "5%")
+      $("#TitleBlock1").css("display","inline-block")
+      $( "#block2" ).css("display", "inline-block")
+      $( "#block2" ).css("width", "")
+      if($("#go2").hasClass("fa-minus"))
+      {
+        $("#go2").removeClass("fa-minus");
+        $("#go2").addClass("fa-expand");
+        $("#go2").css("fontSize", "20px");
+      }
+      if($("#go3").hasClass("fa-minus"))
+      {
+        $("#go3").removeClass("fa-minus");
+        $("#go3").addClass("fa-expand");
+        $("#go3").css("fontSize", "20px");
+      }
+      if($("#go4").hasClass("fa-minus"))
+      {
+        $("#go4").removeClass("fa-minus");
+        $("#go4").addClass("fa-expand");
+        $("#go4").css("fontSize", "20px");
+      }
+      if ($(window).width() >= 1616) {
+        $("#collectionBlock2").css("height", "7%")
+        $("#bookBlock2").css("height", "7%")
+        $("#chapterBlock2").css("height", "82%")
+      }
+      else
+      {
+        $("#collectionBlock2").css("height", "10%")
+        $("#bookBlock2").css("height", "10%")
+        $("#chapterBlock2").css("height", "74%")
+      }
+      
+      $("#go1").removeClass("fa-minus");
+      $("#go1").addClass("fa-expand");
+      $("#go1").css("fontSize", "20px");
+      adjustTitleBlock2Height();
+    }
+    chapterContentDivs.classList.add("expanded");
+    chapterContentDivs.classList.remove("contentDiv");
+    bookContentDivs.classList.add("contentDiv");
+    bookContentDivs.classList.remove("expanded");
+    collcontentDivs.classList.add("contentDiv");
+    collcontentDivs.classList.remove("expanded");
+    if ($(window).width() >= 1616) {
+        chapterContentDivs.style.height = ($(chap_div).parent().height() - (coll_div.clientHeight + book_div.clientHeight + 100)) +"px";
+    }
+    else
+    {
+        chapterContentDivs.style.height = ($(chap_div).parent().height() - (coll_div.clientHeight + book_div.clientHeight + 70)) +"px";
+    }
+      
+});
+////////////////////////////////////////////
+$( "#go2" ).on( "click", function() {
+    if($("#go2").hasClass("fa-expand"))
+    {
+      
+        $( "#block2" ).css("width", "45%")
+        if ($(window).width() >= 1616) 
+        {
+            $( "#chapterBlock2" ).css("height", "800px")
+        }
+        else
+        {
+            $( "#chapterBlock2" ).css("height", "510px")
+        }
+        $( "#block1" ).css("display", "none")
+        $("#TitleBlock2").css("display","inline-block")
+        $("#TitleBlock2").css("width", "5%")
+        $("#TitleChapterBlock2").css("display","none")
+        $("#collectionBlock2").css("display", "none")
+        $("#bookBlock2").css("display", "none")
+        $("#go2").removeClass("fa-expand");
+        $("#go2").addClass("fa-minus");
+        $("#go2").css("fontSize", "10px");
+        adjustTitleBlock2Height();
+    }
+    else
+    {
+        $( "#block2" ).css({width: "",fontSize: "",borderWidth: ""});
+      
+        $("#collectionBlock2").css("display", "inline-block")
+        
+        $("#bookBlock2").css("display", "inline-block")
+        
+        $("#TitleBlock2").css("display","none")
+        $("#TitleChapterBlock2").css("display","inline-block")
+        $( "#block1" ).css("display", "inline-block")
+        $( "#block1" ).css("width", "")
+        if ($(window).width() >= 1616) 
+        {
+          $( "#chapterBlock2" ).css({height:"82%",fontSize: "",borderWidth: ""});
+          $("#collectionBlock2").css("height", "7%")
+          $("#bookBlock2").css("height", "7%")
+        }
+        else
+        {
+          $( "#chapterBlock2" ).css({height:"74%",fontSize: "",borderWidth: ""});
+          $("#collectionBlock2").css("height", "10%")
+          $("#bookBlock2").css("height", "10%")
+        }
+  
+         if($("#go1").hasClass("fa-minus"))
+        {
+          $("#go1").removeClass("fa-minus");
+          $("#go1").addClass("fa-expand");
+          $("#go1").css("fontSize", "20px");
+        }
+        $("#go2").removeClass("fa-minus");
+        $("#go2").addClass("fa-expand");
+        $("#go2").css("fontSize", "20px");
+        adjustTitleBlock2Height();
+    }
+    
+    chapterContentDivs.classList.add("expanded");
+    chapterContentDivs.classList.remove("contentDiv");
+    bookContentDivs.classList.add("contentDiv");
+    bookContentDivs.classList.remove("expanded");
+    collcontentDivs.classList.add("contentDiv");
+    collcontentDivs.classList.remove("expanded");
+    if ($(window).width() >= 1616) 
+    {
+        chapterContentDivs.style.height = ($(chap_div).parent().height() - (coll_div.clientHeight + book_div.clientHeight + 100)) +"px";
+    }
+    else
+    {
+        chapterContentDivs.style.height = ($(chap_div).parent().height() - (coll_div.clientHeight + book_div.clientHeight + 70)) +"px";
+    }  
+});
+ 
+///////////////////////////////////////////////
+$( "#go3" ).on( "click", function() {
+    if($("#go3").hasClass("fa-expand"))
+    {
+      
+        $( "#block2" ).css("width", "45%")
+        if ($(window).width() >= 1616) 
+        {
+            $( "#bookBlock2" ).css("height", "800px")
+        }
+        else
+        {
+            $( "#bookBlock2" ).css("height", "510px")
+        }
+        
+        $( "#block1" ).css("display", "none")
+        
+        $("#TitleBlock2").css("display","inline-block")
+        $("#TitleBlock2").css("width", "5%")
+        $("#TitleBookBlock2").css("display","none")
+        $("#collectionBlock2").css("display", "none")
+        $("#chapterBlock2").css("display", "none")
+
+        bookContentDivs.classList.add("expanded");
+        bookContentDivs.classList.remove("contentDiv");
+        collcontentDivs.classList.add("contentDiv");
+        collcontentDivs.classList.remove("expanded");
+        chapterContentDivs.classList.add("contentDiv");
+        chapterContentDivs.classList.remove("expanded");
+        if ($(window).width() >= 1616) 
+        {
+            bookContentDivs.style.height = ($(book_div).parent().height() - (coll_div.clientHeight + chap_div.clientHeight + 100)) +"px";
+        }
+        else
+        {
+            bookContentDivs.style.height = ($(book_div).parent().height() - (coll_div.clientHeight + chap_div.clientHeight + 70)) +"px"; 
+        }
+        $("#go3").removeClass("fa-expand");
+        $("#go3").addClass("fa-minus");
+        $("#go3").css("fontSize", "10px");
+        adjustTitleBlock2Height();
+    }
+    else
+    {
+        $( "#block2" ).css({width: "",fontSize: "",borderWidth: ""});
+      
+        $("#collectionBlock2").css("display", "inline-block");
+        
+        $("#chapterBlock2").css("display", "inline-block");
+        
+        if ($(window).width() >= 1616) 
+          {
+              $( "#bookBlock2" ).css({height:"7%",fontSize: "",borderWidth: ""});
+              $("#collectionBlock2").css("height", "7%");
+              $("#chapterBlock2").css("height", "82%");
+          }
+      else
+          {
+              $( "#bookBlock2" ).css({height:"10%",fontSize: "",borderWidth: ""});
+              $("#collectionBlock2").css("height", "10%");
+              $("#chapterBlock2").css("height", "74%");
+          }
+      chapterContentDivs.classList.add("expanded");
+      chapterContentDivs.classList.remove("contentDiv");
+      bookContentDivs.classList.add("contentDiv");
+      bookContentDivs.classList.remove("expanded");
+      collcontentDivs.classList.add("contentDiv");
+      collcontentDivs.classList.remove("expanded");
+      if ($(window).width() >= 1616) 
+        {
+            bookContentDivs.style.height = ($(book_div).parent().height() - (coll_div.clientHeight + chap_div.clientHeight + 100)) +"px";
+        }
+    else
+        {
+            bookContentDivs.style.height = ($(book_div).parent().height() - (coll_div.clientHeight + chap_div.clientHeight + 70)) +"px";
+        }
+      $("#TitleBlock2").css("display","none")
+      $("#TitleBookBlock2").css("display","inline-block")
+      $( "#block1" ).css("display", "inline-block")
+      $( "#block1" ).css("width", "")
+      if($("#go1").hasClass("fa-minus"))
+      {
+        $("#go1").removeClass("fa-minus");
+        $("#go1").addClass("fa-expand");
+        $("#go1").css("fontSize", "20px");
+      }
+      $("#go3").removeClass("fa-minus");
+      $("#go3").addClass("fa-expand");
+      $("#go3").css("fontSize", "20px");
+      adjustTitleBlock2Height();
+    }
+      
+});
+///////////////////////////////////////////////
+$( "#go4" ).on( "click", function() {
+    if($("#go4").hasClass("fa-expand"))
+    {
+      
+        $( "#block2" ).css("width", "45%")
+        
+        if ($(window).width() >= 1616) 
+        {
+            $( "#collectionBlock2" ).css("height", "800px")
+        }
+        else
+        {
+            $( "#collectionBlock2" ).css("height", "510px")
+        }
+        $( "#block1" ).css("display", "none")
+       
+        $("#TitleBlock2").css("display","inline-block")
+        $("#TitleBlock2").css("width", "5%")
+        $("#TitleCollectionBlock2").css("display","none")
+        $("#bookBlock2").css("display", "none")
+        $("#chapterBlock2").css("display", "none")
+
+        collcontentDivs.classList.add("expanded");
+        collcontentDivs.classList.remove("contentDiv");
+        bookContentDivs.classList.add("contentDiv");
+        bookContentDivs.classList.remove("expanded");
+        chapterContentDivs.classList.add("contentDiv");
+        chapterContentDivs.classList.remove("expanded");
+        if ($(window).width() >= 1616) 
+        {
+            collcontentDivs.style.height = ($(coll_div).parent().height() - (book_div.clientHeight + chap_div.clientHeight + 100)) +"px";
+        }
+        else
+        {
+            collcontentDivs.style.height = ($(coll_div).parent().height() - (book_div.clientHeight + chap_div.clientHeight + 70)) +"px";
+        }
+
+        $("#go4").removeClass("fa-expand");
+        $("#go4").addClass("fa-minus");
+        $("#go4").css("fontSize", "10px");
+        adjustTitleBlock2Height();
+    }
+    else
+    {
+      $( "#block2" ).css({width: "",fontSize: "",borderWidth: ""});
+      
+      $("#bookBlock2").css("display", "inline-block")
+      
+      $("#chapterBlock2").css("display", "inline-block")
+      
+      if ($(window).width() >= 1616) 
+        {
+            $( "#collectionBlock2" ).css({height:"7%",fontSize: "",borderWidth: ""});
+            $("#bookBlock2").css("height", "7%");
+            $("#chapterBlock2").css("height", "82%");
+        }
+      else
+        {
+            $( "#collectionBlock2" ).css({height:"10%",fontSize: "",borderWidth: ""});
+            $("#bookBlock2").css("height", "10%");
+            $("#chapterBlock2").css("height", "74%");
+        }
+      chapterContentDivs.classList.add("expanded");
+      chapterContentDivs.classList.remove("contentDiv");
+      bookContentDivs.classList.add("contentDiv");
+      bookContentDivs.classList.remove("expanded");
+      collcontentDivs.classList.add("contentDiv");
+      collcontentDivs.classList.remove("expanded");
+      if ($(window).width() >= 1616) 
+        {
+            collcontentDivs.style.height = ($(coll_div).parent().height() - (book_div.clientHeight + chap_div.clientHeight + 100)) +"px";
+        }
+      else
+       {
+        collcontentDivs.style.height = ($(coll_div).parent().height() - (book_div.clientHeight + chap_div.clientHeight + 70)) +"px";
+       }
+      $("#TitleBlock2").css("display","none")
+      $("#TitleCollectionBlock2").css("display","inline-block")
+      $( "#block1" ).css("display", "inline-block")
+      $( "#block1" ).css("width", "")
+
+      if($("#go1").hasClass("fa-minus"))
+      {
+        $("#go1").removeClass("fa-minus");
+        $("#go1").addClass("fa-expand");
+        $("#go1").css("fontSize", "20px");
+      }
+
+      $("#go4").removeClass("fa-minus");
+      $("#go4").addClass("fa-expand");
+      $("#go4").css("fontSize", "20px");
+      adjustTitleBlock2Height();
+    }
+      
+});
+//////////////////////////////////////////////////
+$( "#go5" ).on( "click", function() {
+    if($("#go5").hasClass("fa-expand"))
+    {
+        $( "#block1" ).css("display", "none")
+        if(!$( "#collectionBlock2" ).is(':visible'))
+        {
+          $('#collectionBlock2').css("display", "inline-block")
+        }
+        if(!$("#bookBlock2").is(':visible'))
+        {
+            $("#bookBlock2").css("display", "inline-block")
+        }
+        if(!$("#chapterBlock2").is(':visible'))
+        {
+            $("#chapterBlock2").css("display", "inline-block")
+        }
+        $( "#block2" ).css("display", "none")
+        $( "#block3" ).css("width", "95%")
+        $("#TitleBlock2").css("display","inline-block")
+        $( "#TitleBlock2" ).css("width", "5%")
+        $("#TitleBlock1").css("display","inline-block")
+        
+        $("#go5").removeClass("fa-expand");
+        $("#go5").addClass("fa-minus");
+        $("#go5").css("fontSize", "10px");
+        $("#button-container").css("width", "95%")
+        // $("#button-container").removeClass("w3-half");
+        // $("#button-container").addClass("w3-full");
+        // $("#block3").removeClass("w3-half");
+        // $("#block3").addClass("w3-full");
+       
+      if(!$('#TitleBlock1').is(':visible'))
+      {
+        $('#TitleBlock1').css("display", "inline-block")
+      }
+      if(!$('#TitleChapterBlock2').is(':visible'))
+      {
+        $('#TitleChapterBlock2').css("display", "inline-block")
+      }
+      if(!$('#TitleBookBlock2').is(':visible'))
+      {
+        $('#TitleBookBlock2').css("display", "inline-block")
+      }
+      if(!$('#TitleCollectionBlock2').is(':visible'))
+      {
+        $('#TitleCollectionBlock2').css("display", "inline-block")
+      }
+
+      if($("#go1").hasClass("fa-minus"))
+      {
+        $("#go1").removeClass("fa-minus");
+        $("#go1").addClass("fa-expand");
+        $("#go1").css("fontSize", "20px");
+      }
+      if($("#go2").hasClass("fa-minus"))
+      {
+        $("#go2").removeClass("fa-minus");
+        $("#go2").addClass("fa-expand");
+        $("#go2").css("fontSize", "20px");
+      }
+      if($("#go3").hasClass("fa-minus"))
+      {
+        $("#go3").removeClass("fa-minus");
+        $("#go3").addClass("fa-expand");
+        $("#go3").css("fontSize", "20px");
+      }
+      if($("#go4").hasClass("fa-minus"))
+      {
+        $("#go4").removeClass("fa-minus");
+        $("#go4").addClass("fa-expand");
+        $("#go4").css("fontSize", "20px");
+      }
+
+      adjustTitleBlock2Height();
+
+    }
+    else
+    {
+      $( "#block3" ).css({width: "",fontSize: "",borderWidth: ""});
+      $("#TitleBlock2").css("display","none")
+      $( "#TitleBlock2" ).css("width", "5%")
+      $( "#block1" ).css("display", "inline-block")
+      $( "#block1" ).css("width","25%")
+      $( "#block2" ).css("display", "inline-block")
+      $( "#block2" ).css("width","25%")
+      if ($(window).width() >= 1616) 
+        {
+            $("#collectionBlock2").css("height", "7%")
+            $("#bookBlock2").css("height", "7%")
+            $("#chapterBlock2").css("height", "82%")
+        }
+      else
+        {
+            $("#collectionBlock2").css("height", "10%")
+            $("#bookBlock2").css("height", "10%")
+            $("#chapterBlock2").css("height", "74%")
+        }
+      $("#go5").removeClass("fa-minus");
+      $("#go5").addClass("fa-expand");
+      $("#go5").css("fontSize", "20px");
+      if($("#go1").hasClass("fa-minus"))
+      {
+        $("#go1").removeClass("fa-minus");
+        $("#go1").addClass("fa-expand");
+        $("#go1").css("fontSize", "20px");
+      }
+      if($("#go2").hasClass("fa-minus"))
+      {
+        $("#go2").removeClass("fa-minus");
+        $("#go2").addClass("fa-expand");
+        $("#go2").css("fontSize", "20px");
+      }
+      if($("#go3").hasClass("fa-minus"))
+      {
+        $("#go3").removeClass("fa-minus");
+        $("#go3").addClass("fa-expand");
+        $("#go3").css("fontSize", "20px");
+      }
+      if($("#go4").hasClass("fa-minus"))
+      {
+        $("#go4").removeClass("fa-minus");
+        $("#go4").addClass("fa-expand");
+        $("#go4").css("fontSize", "20px");
+      }
+      adjustTitleBlock2Height();
+      
+    //   $("#button-container").removeClass("w3-full");
+    //   $("#button-container").addClass("w3-half");
+    //   $("#block3").removeClass("w3-full");
+    //   $("#block3").addClass("w3-half");
+      $("#button-container").css("width", "")
+    }
+    chapterContentDivs.classList.add("expanded");
+    chapterContentDivs.classList.remove("contentDiv");
+    bookContentDivs.classList.add("contentDiv");
+    bookContentDivs.classList.remove("expanded");
+    collcontentDivs.classList.add("contentDiv");
+    collcontentDivs.classList.remove("expanded");
+    if ($(window).width() >= 1616) 
+        {
+            chapterContentDivs.style.height = ($(chap_div).parent().height() - (coll_div.clientHeight + book_div.clientHeight + 100)) +"px";
+        }
+    else
+        {
+            chapterContentDivs.style.height = ($(chap_div).parent().height() - (coll_div.clientHeight + book_div.clientHeight + 70)) +"px";
+        }
+      
+});
+ ////////////////////////////////////////////
+ $( "#TitleBlock1" ).on( "click", function() {
+    $( "#block2" ).css("display", "none")
+    $("#TitleBlock1").css("display","none")
+    $("#TitleBlock2").css("display","inline-block")
+    $( "#block1" ).css("display", "inline-block")
+    $( "#block1" ).css("width", "45%")
+    $( "#block3" ).css("width", "50%")
+    if($("#go1").hasClass("fa-expand"))
+    {
+        $("#go1").removeClass("fa-expand");
+        $("#go1").addClass("fa-minus");
+        $("#go1").css("fontSize", "10px");
+    }
+    if($("#go5").hasClass("fa-minus"))
+    {
+        $("#go5").removeClass("fa-minus");
+        $("#go5").addClass("fa-expand");
+        $("#go5").css("fontSize", "20px");
+    }
+    if(!$("#TitleCollectionBlock2").is(":visible"))
+    {
+        $("#TitleCollectionBlock2").css("display","inline-block")
+        if ($(window).width() >= 1616) 
+        {
+            $( "#collectionBlock2" ).css({height:"7%",fontSize: "",borderWidth: ""});
+        }
+        else
+        {
+            $( "#collectionBlock2" ).css({height:"10%",fontSize: "",borderWidth: ""});
+        }
+        $( "#block2" ).css({width: "",fontSize: "",borderWidth: ""});
+        $("#bookBlock2").css("display", "inline-block")
+        $("#chapterBlock2").css("display", "inline-block")
+        $("#go4").removeClass("fa-minus");
+        $("#go4").addClass("fa-expand");
+        $("#go4").css("fontSize", "20px");
+    }
+    
+    if(!$("#TitleBookBlock2").is(":visible"))
+    {
+        $("#TitleBookBlock2").css("display","inline-block")
+        if ($(window).width() >= 1616) 
+        {
+            $( "#bookBlock2" ).css({height:"7%",fontSize: "",borderWidth: ""});
+        }
+        else
+        {
+            $( "#bookBlock2" ).css({height:"10%",fontSize: "",borderWidth: ""});
+        }
+        $( "#block2" ).css({width: "",fontSize: "",borderWidth: ""});
+        $("#chapterBlock2").css("display", "inline-block")
+        $("#collectionBlock2").css("display", "inline-block")
+        $("#go3").removeClass("fa-minus");
+        $("#go3").addClass("fa-expand");
+        $("#go3").css("fontSize", "20px");
+    }
+    if(!$("#TitleChapterBlock2").is(":visible"))
+    {
+        $("#TitleChapterBlock2").css("display","inline-block")
+        $( "#chapterBlock2" ).css({height:"10%",fontSize: "",borderWidth: ""}); 
+        $( "#block2" ).css({width: "",fontSize: "",borderWidth: ""});
+        $("#bookBlock2").css("display", "inline-block")
+        $("#collectionBlock2").css("display", "inline-block")
+        $("#go2").removeClass("fa-minus");
+        $("#go2").addClass("fa-expand");
+        $("#go2").css("fontSize", "20px");
+    }
+    adjustTitleBlock2Height();
+    $("#button-container").css("width", "");
+    chapterContentDivs.classList.add("expanded");
+    chapterContentDivs.classList.remove("contentDiv");
+    bookContentDivs.classList.add("contentDiv");
+    bookContentDivs.classList.remove("expanded");
+    collcontentDivs.classList.add("contentDiv");
+    collcontentDivs.classList.remove("expanded");
+    if ($(window).width() >= 1616) 
+        {
+            chapterContentDivs.style.height = ($(chap_div).parent().height() - (coll_div.clientHeight + book_div.clientHeight + 100)) +"px"; 
+        }
+        else
+        {
+            chapterContentDivs.style.height = ($(chap_div).parent().height() - (coll_div.clientHeight + book_div.clientHeight + 70)) +"px";
+        }
+    
+    
+})
+//////////////////////////////////////////////////////
+$( "#TitleChapterBlock2" ).on( "click", function() {
+    $( "#block1" ).css("display", "none")
+    $("#TitleChapterBlock2").css("display","none")
+    $("#TitleBlock2").css("display","inline-block")
+    $( "#block2" ).css("display", "inline-block")
+    $( "#block2" ).css("width", "45%")
+    $( "#block3" ).css("width", "50%")
+    $("#collectionBlock2").css("display", "none")
+    $("#bookBlock2").css("display", "none")
+    if ($(window).width() >= 1616) 
+        {
+            $( "#chapterBlock2" ).css("height", "800px")
+        }
+    else
+        {
+            $( "#chapterBlock2" ).css("height", "510px")
+        }
+    if($("#go2").hasClass("fa-expand"))
+    {
+        $("#go2").removeClass("fa-expand");
+        $("#go2").addClass("fa-minus");
+        $("#go2").css("fontSize", "10px");
+    }
+    if($("#go5").hasClass("fa-minus"))
+    {
+        $("#go5").removeClass("fa-minus");
+        $("#go5").addClass("fa-expand");
+        $("#go5").css("fontSize", "20px");
+    }
+    if(!$("#TitleCollectionBlock2").is(":visible"))
+    {
+        $("#TitleCollectionBlock2").css("display","inline-block")
+        if ($(window).width() >= 1616) 
+        {
+            $( "#collectionBlock2" ).css({height:"7%",fontSize: "",borderWidth: ""}); 
+        }
+        else
+        {
+            $( "#collectionBlock2" ).css({height:"10%",fontSize: "",borderWidth: ""}); 
+        }
+        $( "#block2" ).css({fontSize: "",borderWidth: ""});
+        $("#chapterBlock2").css("display", "inline-block")
+        $("#go4").removeClass("fa-minus");
+        $("#go4").addClass("fa-expand");
+        $("#go4").css("fontSize", "20px");
+    }
+    
+    if(!$("#TitleBookBlock2").is(":visible"))
+    {
+        $("#TitleBookBlock2").css("display","inline-block")
+        if ($(window).width() >= 1616) 
+        {
+            $( "#bookBlock2" ).css({height:"7%",fontSize: "",borderWidth: ""}); 
+        }
+        else
+        {
+            $( "#bookBlock2" ).css({height:"10%",fontSize: "",borderWidth: ""}); 
+        } 
+        $( "#block2" ).css({fontSize: "",borderWidth: ""});
+        $("#chapterBlock2").css("display", "inline-block")
+        $("#go3").removeClass("fa-minus");
+        $("#go3").addClass("fa-expand");
+        $("#go3").css("fontSize", "20px");
+    }
+    if(!$("#TitleBlock1").is(":visible"))
+    {
+        $("#TitleBlock1").css("display","inline-block") 
+        $( "#block1" ).css({width: "",fontSize: "",borderWidth: ""});
+        $("#chapterBlock2").css("display", "inline-block")
+        $("#go1").removeClass("fa-minus");
+        $("#go1").addClass("fa-expand");
+        $("#go1").css("fontSize", "20px");
+    }
+    adjustTitleBlock2Height();
+    $("#button-container").css("width", "");
+    chapterContentDivs.classList.add("expanded");
+    chapterContentDivs.classList.remove("contentDiv");
+    bookContentDivs.classList.add("contentDiv");
+    bookContentDivs.classList.remove("expanded");
+    collcontentDivs.classList.add("contentDiv");
+    collcontentDivs.classList.remove("expanded");
+    if ($(window).width() >= 1616) 
+        {
+            chapterContentDivs.style.height = ($(chap_div).parent().height() - (coll_div.clientHeight + book_div.clientHeight + 100)) +"px";
+        }
+        else
+        {
+            chapterContentDivs.style.height = ($(chap_div).parent().height() - (coll_div.clientHeight + book_div.clientHeight + 70)) +"px";
+        } 
+})
+/////////////////////////////////////////////////
+$( "#TitleBookBlock2" ).on( "click", function() {
+    $( "#block1" ).css("display", "none")
+    $("#TitleBookBlock2").css("display","none")
+    $("#TitleBlock2").css("display","inline-block")
+    $( "#block2" ).css("display", "inline-block")
+    $( "#block2" ).css("width", "45%")
+    $( "#block3" ).css("width", "50%")
+    $("#collectionBlock2").css("display", "none")
+    $("#chapterBlock2").css("display", "none")
+    if ($(window).width() >= 1616) 
+        {
+            $( "#bookBlock2" ).css("height", "800px")
+        }
+    else
+        {
+            $( "#bookBlock2" ).css("height", "510px")
+        }
+    if($("#go3").hasClass("fa-expand"))
+    {
+        $("#go3").removeClass("fa-expand");
+        $("#go3").addClass("fa-minus");
+        $("#go3").css("fontSize", "10px");
+    }
+    if($("#go5").hasClass("fa-minus"))
+    {
+        $("#go5").removeClass("fa-minus");
+        $("#go5").addClass("fa-expand");
+        $("#go5").css("fontSize", "20px");
+    }
+    if(!$("#TitleCollectionBlock2").is(":visible"))
+    {
+        $("#TitleCollectionBlock2").css("display","inline-block")
+        if ($(window).width() >= 1616) 
+        {
+            $( "#collectionBlock2" ).css({height:"7%",fontSize: "",borderWidth: ""}); 
+        }
+        else
+        {
+            $( "#collectionBlock2" ).css({height:"10%",fontSize: "",borderWidth: ""}); 
+        }
+        $( "#block2" ).css({fontSize: "",borderWidth: ""});
+        $("#bookBlock2").css("display", "inline-block")
+        $("#go4").removeClass("fa-minus");
+        $("#go4").addClass("fa-expand");
+        $("#go4").css("fontSize", "20px");
+    }
+    
+    if(!$("#TitleChapterBlock2").is(":visible"))
+    {
+        $("#TitleChapterBlock2").css("display","inline-block")
+        if ($(window).width() >= 1616) 
+        {
+            $( "#chapterBlock2" ).css({height:"7%",fontSize: "",borderWidth: ""});  
+        }
+        else
+        {
+            $( "#chapterBlock2" ).css({height:"10%",fontSize: "",borderWidth: ""}); 
+        }
+        $( "#block2" ).css({fontSize: "",borderWidth: ""});
+        $("#bookBlock2").css("display", "inline-block")
+        $("#go2").removeClass("fa-minus");
+        $("#go2").addClass("fa-expand");
+        $("#go2").css("fontSize", "20px");
+    }
+    if(!$("#TitleBlock1").is(":visible"))
+    {
+        $("#TitleBlock1").css("display","inline-block") 
+        $( "#block1" ).css({width: "",fontSize: "",borderWidth: ""});
+        $("#bookBlock2").css("display", "inline-block")
+        $("#go1").removeClass("fa-minus");
+        $("#go1").addClass("fa-expand");
+        $("#go1").css("fontSize", "20px");
+    }
+    adjustTitleBlock2Height();
+    $("#button-container").css("width", "");
+    bookContentDivs.classList.add("expanded");
+    bookContentDivs.classList.remove("contentDiv");
+    collcontentDivs.classList.add("contentDiv");
+    collcontentDivs.classList.remove("expanded");
+    chapterContentDivs.classList.add("contentDiv");
+    chapterContentDivs.classList.remove("expanded");
+    if ($(window).width() >= 1616) 
+    {
+        bookContentDivs.style.height = ($(book_div).parent().height() - (coll_div.clientHeight + chap_div.clientHeight + 100)) +"px"; 
+    }
+    else
+    {
+        bookContentDivs.style.height = ($(book_div).parent().height() - (coll_div.clientHeight + chap_div.clientHeight + 70)) +"px";
+    }
+    
+})
+///////////////////////////////////////////////////
+$( "#TitleCollectionBlock2" ).on( "click", function() {
+    $( "#block1" ).css("display", "none")
+    $("#TitleCollectionBlock2").css("display","none")
+    $("#TitleBlock2").css("display","inline-block")
+    $( "#block2" ).css("display", "inline-block")
+    $( "#block2" ).css("width", "45%")
+    $( "#block3" ).css("width", "50%")
+    $("#bookBlock2").css("display", "none")
+    $("#chapterBlock2").css("display", "none")
+    if ($(window).width() >= 1616) 
+    {
+        $( "#collectionBlock2" ).css("height", "800px") 
+    }
+    else
+    {
+        $( "#collectionBlock2" ).css("height", "510px")
+    }
+    if($("#go4").hasClass("fa-expand"))
+    {
+        $("#go4").removeClass("fa-expand");
+        $("#go4").addClass("fa-minus");
+        $("#go4").css("fontSize", "10px");
+    }
+    if($("#go5").hasClass("fa-minus"))
+    {
+        $("#go5").removeClass("fa-minus");
+        $("#go5").addClass("fa-expand");
+        $("#go5").css("fontSize", "20px");
+    }
+    if(!$("#TitleBookBlock2").is(":visible"))
+    {
+        $("#TitleBookBlock2").css("display","inline-block")
+        if ($(window).width() >= 1616) 
+        {
+            $( "#bookBlock2" ).css({height:"7%",fontSize: "",borderWidth: ""});  
+        }
+        else
+        {
+            $( "#bookBlock2" ).css({height:"10%",fontSize: "",borderWidth: ""}); 
+        }
+        $( "#block2" ).css({fontSize: "",borderWidth: ""});
+        $("#collectionBlock2").css("display", "inline-block")
+        $("#go3").removeClass("fa-minus");
+        $("#go3").addClass("fa-expand");
+        $("#go3").css("fontSize", "20px");
+    }
+    
+    if(!$("#TitleChapterBlock2").is(":visible"))
+    {
+        $("#TitleChapterBlock2").css("display","inline-block")
+        if ($(window).width() >= 1616) 
+        {
+            $( "#chapterBlock2" ).css({height:"7%",fontSize: "",borderWidth: ""});  
+        }
+        else
+        {
+            $( "#chapterBlock2" ).css({height:"10%",fontSize: "",borderWidth: ""});  
+        }
+        $( "#block2" ).css({fontSize: "",borderWidth: ""});
+        $("#collectionBlock2").css("display", "inline-block")
+        $("#go2").removeClass("fa-minus");
+        $("#go2").addClass("fa-expand");
+        $("#go2").css("fontSize", "20px");
+    }
+    if(!$("#TitleBlock1").is(":visible"))
+    {
+        $("#TitleBlock1").css("display","inline-block") 
+        $( "#block1" ).css({width: "",fontSize: "",borderWidth: ""});
+        $("#collectionBlock2").css("display", "inline-block")
+        $("#go1").removeClass("fa-minus");
+        $("#go1").addClass("fa-expand");
+        $("#go1").css("fontSize", "20px");
+    }
+    adjustTitleBlock2Height();
+    $("#button-container").css("width", "");
+    collcontentDivs.classList.add("expanded");
+    collcontentDivs.classList.remove("contentDiv");
+    bookContentDivs.classList.add("contentDiv");
+    bookContentDivs.classList.remove("expanded");
+    chapterContentDivs.classList.add("contentDiv");
+    chapterContentDivs.classList.remove("expanded");
+    if ($(window).width() >= 1616) 
+        {
+            collcontentDivs.style.height = ($(coll_div).parent().height() - (book_div.clientHeight + chap_div.clientHeight + 100)) +"px"; 
+        }
+        else
+        {
+            collcontentDivs.style.height = ($(coll_div).parent().height() - (book_div.clientHeight + chap_div.clientHeight + 70)) +"px";  
+        }
+})
+/////////////////////////////////////////////////////
+//////////////////////EOC/////////////////////
+        
+///////////////////////Showing/hiding modal window for changing hadiths chapter/////////////////
+
+        $('#btnCancel').on('click', function() {
+            $('#hadpopup1').hide();
+        });
+
+        $(document).on('change', 'input[type=radio][name=optChapter]', function(event) {
+            var radioChecked = $('input[name="optChapter"]:checked').length > 0;
+            $('#btnOk').prop('disabled', !radioChecked);
+        });
+
+        $('#btnOk').on('click', function() {
+            $('#chainTable tbody').empty();
+            $('#moalaTable tbody').empty();
+            $('#responseTab').css('display','none'); //for comments inside first card
+            $('#hadeeth tbody').empty();//first card
+            $('#hadTabbody').empty();
+            old_chapter_id = "";
+
+            var checkedtd = $('#chapterTabBody td').filter(function() {
+                return $(this).css('background-color') == chkdBgColor;
+            });
+            var chdbooktd = $('#bookTabBody td').filter(function() {
+                return $(this).css('background-color') == chkdBgColor;
+            });
+            if (checkedtd.length > 0) {old_chapter_id = checkedtd.find('input[type=hidden][name=chapter]').val();}
+            
+            let newchapter = $('input[name="optChapter"]:checked').val();
+            var popupData = {
+                'hadithid': hadith_table_id,
+                'chapter': newchapter,
+                'oldchapter': old_chapter_id};
+            //Save the chapter in hadith and change the flag and change the chapter list to the new hadith change//will start on sunday
+            $.ajax({url:"/updatehadithchapter",
+                type:"POST",
+                contentType: 'application/json',
+                data:JSON.stringify(popupData),
+                success:function(result){
+                    const checkedBook = chdbooktd.find('input[type=hidden][name=bookHidden]').val();;
+                    let book_data={data_book:checkedBook};
+                    //getchapters and their hadiths based on the book
+                    $.ajax({url:"/getchapter",
+                    type:"post",
+                    contentType: 'application/json',
+                    data:JSON.stringify(book_data),
+                    success:function(result){
+                            
+                        var chap = result.chap;
+                        let selector = document.getElementById("chapterTabBody");
+                        selector.innerHTML = "";
+                        var cntcheck = null;
+                        for (var i=0;i<chap.length;i++){
+                            var doc = chap[i]
+                            const tr = document.createElement("tr");
+                                
+                                const td1 = document.createElement("td");
+                                td1.style.textAlign = "center";
+                                td1.style.width = "5px";
+                                
+                                const iele = document.createElement("i");
+                                iele.className = "checkmark w3-text-theme";
+                                iele.id = doc["_id"];
+                                iele.style.fontSize = "15px";
+                                //if (doc["_id"] == newchapter){checkbox.checked = true;cntcheck = doc;}
+
+                                //del icon for chapters with no hadiths
+                                const delIcon = document.createElement("a");
+                                delIcon.href = "";
+                                delIcon.className = "deleteRow";
+                                delIcon.setAttribute("rel", "del");
+                                const icon = document.createElement("i");
+                                icon.className = "fa fa-minus w3-text-theme";
+                                icon.style.fontSize = "15px";
+                                delIcon.appendChild(icon);
+
+                                //if there is no hadith minus button else checkbox
+                                if(doc["flag"] == 1){if(doc["save_flag"]==true){td1.appendChild(iele);}}else{td1.appendChild(delIcon);}
+                                
+                                const td2 = document.createElement("td");
+                                td2.style.textAlign = "right";
+                                td2.style.whiteSpace ="wrap";
+                                td2.style.overflowY = "auto";
+                                td2.style.wordBreak = "break-all";
+                                td2.style.width = "150px";
+                                td2.style.maxWidth = "150px";//background-color: rgb(24, 139, 240);color:white"
+                                if (doc["_id"] == newchapter){td2.style.backgroundColor = 'rgb(24, 139, 240)';td2.style.color='white';}
+
+                                const hiddenInput = document.createElement("input");
+                                hiddenInput.type = "hidden";
+                                hiddenInput.id = "chapter";
+                                hiddenInput.name = "chapter";
+                                hiddenInput.value = doc["_id"];
+
+                                const p = document.createElement("p");
+                                p.textContent = doc["arChapter"];
+
+                                td2.appendChild(hiddenInput);
+                                td2.appendChild(p);
+
+                                const td3 = document.createElement("td");
+                                td3.style.textAlign = "left";
+
+                                const anchorElement = document.createElement("a")
+                                anchorElement.setAttribute("href","");
+                                anchorElement.setAttribute("rel","edit");
+                                
+                                const editIcon = document.createElement("i");
+                                editIcon.className = "fa fa-edit w3-text-theme";
+                                editIcon.style.fontSize = "15px";
+                                
+                                anchorElement.appendChild(editIcon)
+                                td3.appendChild(anchorElement);
+                                
+                                tr.appendChild(td1);
+                                tr.appendChild(td2);
+                                tr.appendChild(td3);
+
+                                selector.appendChild(tr);
+                                
+                            }
+                            $.ajax({url:"/updatehadith",
+                                type:"POST",
+                                dataType:'json',
+                                data:{data_chapter: newchapter},
+                                success:function(result){
+                                    var data = result.data1;
+                                    newHadithTable(data)
+                                    
+                                    rows = $("#hadeeth tbody tr");
+                                    rows.each(function() {
+                                        if($(this).find('input[type="hidden"]').val() == hadith_table_id)
+                                        {
+                                            currentIndex = $(this).index();}
+                                    });
+                                    showCurrentRow()
+                                    
+                                    
+                                    
+                                },
+                                error: function(error) {
+                                    console.log(error);
+                                }
+                            });
+                            
+                            
+                        },
+                        error: function(error) {
+                            console.log(error);
+                        }
+                    });
+
+/////////////////end///////////////////////
+
+
+                }
+            }); 
+            $('#hadpopup1').hide();
+            
+        });
+    
+        $("#txtSearch").on("keyup", function() {
+            var value = $(this).val(),
+            $tr =  $("#hadChap tr");
+            $("#hadChap tr").each(function(){
+                var found = 0;
+                $(this).find("p").each(function(){
+                    found += $(this).text().indexOf(value)
+                });
+                if (found > -1){
+                    $(this).closest('tr').show();
+                }else{
+                    $(this).closest('tr').hide();
+                }
+            });
+        });
+        
+        //chapterContentDivs.style.height = ($(chap_div).parent().height() - (coll_div.clientHeight + book_div.clientHeight + 90)) +"px"
+        coll_header.addEventListener("click", function() {
+            
+            if(collcontentDivs.classList == "expanded")
+            {
+                collcontentDivs.classList.add("contentDiv");
+                collcontentDivs.classList.remove("expanded");
+                chapterContentDivs.classList.add("expanded");
+                chapterContentDivs.classList.remove("contentDiv");
+                if ($(window).width() >= 1616) 
+                {
+                    coll_div.style.height = "7%";
+                    book_div.style.height = "7%";
+                    chap_div.style.height = "82%";  
+                }
+                else
+                {
+                    coll_div.style.height = "10%";
+                    book_div.style.height = "10%";
+                    chap_div.style.height = "73%";  
+                }
+            }
+            else{
+                if(bookContentDivs.classList=="expanded")
+                {
+                    bookContentDivs.classList.add("contentDiv");
+                    bookContentDivs.classList.remove("expanded");
+                    if ($(window).width() >= 1616) 
+                    {
+                        book_div.style.height = "7%";
+                    }
+                    else
+                    {
+                        book_div.style.height = "10%";
+                    }
+                }
+                if(chapterContentDivs.classList=="expanded")
+                {
+                    chapterContentDivs.classList.add("contentDiv");
+                    chapterContentDivs.classList.remove("expanded");
+                    if ($(window).width() >= 1616) 
+                    {
+                        chap_div.style.height = "7%";
+                    }
+                    else
+                    {
+                        chap_div.style.height = "10%";
+                    }
+                    //const chkchap = $('input[type=checkbox][name=chkChapter]:checked');
+                    var checkedtd = $('#chapterTabBody td').filter(function() {
+                        return $(this).css('background-color') == chkdBgColor;
+                    });
+                    if (checkedtd.length > 0) {
+                        //const chkchap = checkedtd.find('input[type=hidden][name=chapter]').val();
+                        $('#chDiv').animate({ scrollTop:  checkedtd.closest('tr').position().top  }, 500);}
+                    //if (chkchap.length > 0) {
+                    //$('#chDiv').animate({ scrollTop:  $(chkchap).closest('td').position().top  }, 500);}
+                }
+                collcontentDivs.classList.remove("contentDiv");
+                collcontentDivs.classList.add("expanded");
+                if ($(window).width() >= 1616) 
+                    {
+                        coll_div.style.height = "82%";
+                    }
+                    else
+                    {
+                        coll_div.style.height = "73%";
+                    }
+            }
+            if ($(window).width() >= 1616) 
+                {
+                    collcontentDivs.style.height = ($(coll_div).parent().height() - (book_div.clientHeight + chap_div.clientHeight + 105)) +"px"
+                }
+            else
+                {
+                    collcontentDivs.style.height = ($(coll_div).parent().height() - (book_div.clientHeight + chap_div.clientHeight + 120)) +"px"
+                }
+            
+            });
+        book_header.addEventListener("click", function() {
+            
+            if(bookContentDivs.classList == "expanded")
+            {
+                bookContentDivs.classList.add("contentDiv");
+                bookContentDivs.classList.remove("expanded");
+                collcontentDivs.classList.add("contentDiv");
+                collcontentDivs.classList.remove("expanded");
+                chapterContentDivs.classList.add("expanded");
+                chapterContentDivs.classList.remove("contentDiv");
+                if ($(window).width() >= 1616) 
+                {
+                    coll_div.style.height = "7%";
+                    book_div.style.height = "7%";
+                    chap_div.style.height = "82%";
+                }
+                else
+                {
+                    coll_div.style.height = "10%";
+                    book_div.style.height = "10%";
+                    chap_div.style.height = "73%";
+                }
+            }
+            else{
+                if(collcontentDivs.classList=="expanded")
+                {
+                    collcontentDivs.classList.add("contentDiv");
+                    collcontentDivs.classList.remove("expanded");
+                    if ($(window).width() >= 1616) 
+                    {
+                        coll_div.style.height = "7%";
+                    }
+                    else
+                    {
+                        coll_div.style.height = "10%";
+                    }
+                }
+                if(chapterContentDivs.classList=="expanded")
+                {
+                    chapterContentDivs.classList.add("contentDiv");
+                    chapterContentDivs.classList.remove("expanded");
+                    if ($(window).width() >= 1616) 
+                    {
+                        chap_div.style.height = "7%";
+                    }
+                    else
+                    {
+                        chap_div.style.height = "10%";
+                    }
+                    
+                }
+                bookContentDivs.classList.remove("contentDiv");
+                bookContentDivs.classList.add("expanded");
+                if ($(window).width() >= 1616) 
+                    {
+                        book_div.style.height = "82%";
+                    }
+                else
+                    {
+                        book_div.style.height = "73%";
+                    }
+                }
+                if ($(window).width() >= 1616) 
+                {
+                    bookContentDivs.style.height = ($(book_div).parent().height() - (coll_div.clientHeight + chap_div.clientHeight + 105)) +"px"
+                }
+            else
+                {
+                    bookContentDivs.style.height = ($(book_div).parent().height() - (coll_div.clientHeight + chap_div.clientHeight + 120)) +"px"
+                }
+                var checkedtd = $('#chapterTabBody td').filter(function() {
+                    return $(this).css('background-color') == chkdBgColor;
+                });
+                if (checkedtd.length > 0) {
+                $('#chDiv').animate({ scrollTop:  checkedtd.closest('tr').position().top  }, 500);}
+                var chdbooktd = $('#bookTabBody td').filter(function() {
+                    return $(this).css('background-color') == chkdBgColor;
+                });
+                if (chdbooktd.length > 0) {
+                    $('#bkDiv').animate({ scrollTop:  chdbooktd.closest('tr').position().top  }, 500);}
+                    
+           });
+            chap_header.addEventListener("click", function() {
+            
+                if(chapterContentDivs.classList == "expanded")
+                {
+                    bookContentDivs.classList.add("contentDiv");
+                    bookContentDivs.classList.remove("expanded");
+                    collcontentDivs.classList.add("contentDiv");
+                    collcontentDivs.classList.remove("expanded");
+                    // chapterContentDivs.classList.add("expanded");
+                    // chapterContentDivs.classList.remove("contentDiv");
+                    if ($(window).width() >= 1616) 
+                    {
+                        coll_div.style.height = "7%";
+                        book_div.style.height = "7%";
+                        chap_div.style.height = "82%";
+                    }
+                else
+                    {
+                        coll_div.style.height = "10%";
+                        book_div.style.height = "10%";
+                        chap_div.style.height = "73%";
+                    }
+                    
+                }
+                else{
+                    if(collcontentDivs.classList=="expanded")
+                        {
+                            collcontentDivs.classList.add("contentDiv");
+                            collcontentDivs.classList.remove("expanded");
+                            if ($(window).width() >= 1616) 
+                        {
+                            coll_div.style.height = "7%";
+                        }
+                        else
+                        {
+                            coll_div.style.height = "10%";
+                        }
+                        }
+                        if(bookContentDivs.classList=="expanded")
+                        {
+                            bookContentDivs.classList.add("contentDiv");
+                            bookContentDivs.classList.remove("expanded");
+                            if ($(window).width() >= 1616) 
+                        {
+                            book_div.style.height = "7%";
+                        }
+                        else
+                        {
+                            book_div.style.height = "10%";
+                        }
+                        }
+                        chapterContentDivs.classList.remove("contentDiv");
+                        chapterContentDivs.classList.add("expanded");
+                        if ($(window).width() >= 1616) 
+                    {
+                        chap_div.style.height = "82%";
+                    }
+                    else
+                    {
+                        chap_div.style.height = "73%";
+                    }
+                    }
+                    if ($(window).width() >= 1616) 
+                    {
+                        chapterContentDivs.style.height = ($(chap_div).parent().height() - (book_div.clientHeight + coll_div.clientHeight + 105)) +"px"
+                    }
+                    else
+                    {
+                        chapterContentDivs.style.height = ($(chap_div).parent().height() - (book_div.clientHeight + coll_div.clientHeight + 120)) +"px"
+                    }   
+                    var checkedtd = $('#chapterTabBody td').filter(function() {
+                        return $(this).css('background-color') == chkdBgColor;
+                    });
+                    if (checkedtd.length > 0) {
+                        $('#chDiv').animate({ scrollTop:  checkedtd.closest('tr').position().top  }, 500);}
+                    
+                    });
+// Function to update styles based on screen size
+function updateStyles(mq) {
+    if (mq.matches) {
+        if($("#go4").hasClass("fa-minus"))
+        {
+          
+            $( "#collectionBlock2" ).css("height", "800px")
+            collcontentDivs.style.height = ($(coll_div).parent().height() - (book_div.clientHeight + chap_div.clientHeight + 100)) +"px";
+        }
+        if($("#go3").hasClass("fa-minus"))
+        {
+          
+            $( "#bookBlock2" ).css("height", "800px")
+            bookContentDivs.style.height = ($(book_div).parent().height() - (coll_div.clientHeight + chap_div.clientHeight + 100)) +"px";
+        }
+        if($("#go2").hasClass("fa-minus"))
+        {
+       
+            $( "#chapterBlock2" ).css("height", "800px")
+            chapterContentDivs.style.height = ($(chap_div).parent().height() - (coll_div.clientHeight + book_div.clientHeight + 100)) +"px";
+        }
+        if((collcontentDivs.classList == "expanded") && ($("#go4").hasClass("fa-expand")))
+            {
+                // collcontentDivs.classList.add("contentDiv");
+                // collcontentDivs.classList.remove("expanded");
+                // chapterContentDivs.classList.add("expanded");
+                // chapterContentDivs.classList.remove("contentDiv");
+                coll_div.style.height = "82%";
+                book_div.style.height = "7%";
+                chap_div.style.height = "7%";
+                collcontentDivs.style.height = ($(coll_div).parent().height() - (book_div.clientHeight + chap_div.clientHeight + 105)) +"px"
+            }
+        if((bookContentDivs.classList=="expanded")&& ($("#go3").hasClass("fa-expand")))
+            {
+                // bookContentDivs.classList.add("contentDiv");
+                // bookContentDivs.classList.remove("expanded");
+                // collcontentDivs.classList.add("contentDiv");
+                // collcontentDivs.classList.remove("expanded");
+                // chapterContentDivs.classList.add("expanded");
+                // chapterContentDivs.classList.remove("contentDiv");
+                coll_div.style.height = "7%";
+                book_div.style.height = "82%";
+                chap_div.style.height = "7%";
+                bookContentDivs.style.height = ($(book_div).parent().height() - (coll_div.clientHeight + chap_div.clientHeight + 105)) +"px"
+            }
+        if((chapterContentDivs.classList=="expanded")&& ($("#go2").hasClass("fa-expand")))
+            {
+                // bookContentDivs.classList.add("contentDiv");
+                // bookContentDivs.classList.remove("expanded");
+                // collcontentDivs.classList.add("contentDiv");
+                // collcontentDivs.classList.remove("expanded");
+                coll_div.style.height = "7%";
+                book_div.style.height = "7%";
+                chap_div.style.height = "82%";
+                chapterContentDivs.style.height = ($(chap_div).parent().height() - (book_div.clientHeight + coll_div.clientHeight + 105)) +"px"
+            }
+        
+    } else {
+
+        if($("#go4").hasClass("fa-minus"))
+        {
+         
+        
+            $( "#collectionBlock2" ).css("height", "510px")
+            collcontentDivs.style.height = ($(coll_div).parent().height() - (book_div.clientHeight + chap_div.clientHeight + 70)) +"px";
+        }
+        if($("#go3").hasClass("fa-minus"))
+        {
+        
+            $( "#bookBlock2" ).css("height", "510px")
+            bookContentDivs.style.height = ($(book_div).parent().height() - (coll_div.clientHeight + chap_div.clientHeight + 70)) +"px";
+        }
+        if($("#go2").hasClass("fa-minus"))
+        {
+            
+            $( "#chapterBlock2" ).css("height", "510px")
+            chapterContentDivs.style.height = ($(chap_div).parent().height() - (coll_div.clientHeight + book_div.clientHeight + 70)) +"px";
+        }
+        if((collcontentDivs.classList == "expanded") && ($("#go4").hasClass("fa-expand")))
+            {
+                // collcontentDivs.classList.add("contentDiv");
+                // collcontentDivs.classList.remove("expanded");
+                // chapterContentDivs.classList.add("expanded");
+                // chapterContentDivs.classList.remove("contentDiv");
+                coll_div.style.height = "73%";
+                book_div.style.height = "10%";
+                chap_div.style.height = "10%";
+                collcontentDivs.style.height = ($(coll_div).parent().height() - (book_div.clientHeight + chap_div.clientHeight + 120)) +"px"
+            }
+        if((bookContentDivs.classList=="expanded") && ($("#go3").hasClass("fa-expand")))
+            {
+                // bookContentDivs.classList.add("contentDiv");
+                // bookContentDivs.classList.remove("expanded");
+                // collcontentDivs.classList.add("contentDiv");
+                // collcontentDivs.classList.remove("expanded");
+                // chapterContentDivs.classList.add("expanded");
+                // chapterContentDivs.classList.remove("contentDiv");
+                coll_div.style.height = "10%";
+                book_div.style.height = "73%";
+                chap_div.style.height = "10%";
+                bookContentDivs.style.height = ($(book_div).parent().height() - (coll_div.clientHeight + chap_div.clientHeight + 120)) +"px"
+            }
+        if((chapterContentDivs.classList=="expanded") && ($("#go2").hasClass("fa-expand")))
+            {
+                // bookContentDivs.classList.add("contentDiv");
+                // bookContentDivs.classList.remove("expanded");
+                // collcontentDivs.classList.add("contentDiv");
+                // collcontentDivs.classList.remove("expanded");
+                coll_div.style.height = "10%";
+                book_div.style.height = "10%";
+                chap_div.style.height = "73%";
+                chapterContentDivs.style.height = ($(chap_div).parent().height() - (book_div.clientHeight + coll_div.clientHeight + 120)) +"px"
+            }
+    }
+    adjustTitleBlock2Height()
+    }
+    // Initial check and update styles
+    var mq = window.matchMedia('(min-width: 1616px),(max-width: 1240px)');
+    updateStyles(mq);
+    // Add event listener for window resize
+    window.addEventListener('resize', function() {
+    updateStyles(mq);
+    });
+////////////////////////////////////////////////////////
+
+
+
+
+                    
+                    
+                    
+                    var checkedtd = $('#chapterTabBody td').filter(function() {
+                        return $(this).css('background-color') == chkdBgColor;
+                    });
+                    if (checkedtd.length > 0) {
+                        $('#chDiv').animate({ scrollTop:  checkedtd.closest('tr').position().top  }, 500);}
+                    
+    
+    
+                    });
