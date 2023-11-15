@@ -117,7 +117,8 @@ def getHadithComments(hadithid):
         h['_id'] = str(h['_id'])
     return(hadith)
 
-def getHadithSanad(hadithid):
+#not using
+def getHadithSanad1(hadithid):
     query = {"_id":ObjectId(hadithid)}
     hadith = list(db.HadithBody.find(query,
                                     {"chain"}))
@@ -129,6 +130,31 @@ def getHadithSanad(hadithid):
                 for n in narrator:
                     narrator_lst.append([n["_id"],n["narrator_ar"]]) 
                 
+    return narrator_lst
+#--------
+def getHadithSanad(hadithid):
+    query = {"_id": ObjectId(hadithid)}
+
+    pipeline = [
+        {"$match": query},
+        {"$unwind": "$chain"},
+        {"$lookup": {
+            "from": "HadithAuthors",
+            "localField": "chain",
+            "foreignField": "_id",
+            "as": "narrator"
+        }},
+        {"$unwind": "$narrator"},
+        {"$project": {
+            "narrator_id": "$narrator._id",
+            "narrator_ar": "$narrator.narrator_ar",
+            "_id": 0
+        }}
+    ]
+    narrator_lst = []
+    narrator = list(db.HadithBody.aggregate(pipeline))
+    for n in narrator:
+        narrator_lst.append([str(n["narrator_id"]),n["narrator_ar"]]) 
     return narrator_lst
 
 def getHadithMoallaka(hadithid):
