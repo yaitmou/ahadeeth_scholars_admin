@@ -313,10 +313,20 @@ p{cursor: pointer}
   display: block;
   
 }
-
+#hadeeth tbody tr {
+  width: 100%;
+  
+}
+#hadeeth tbody tr td {
+  width: 100%;
+}
+#hadeeth tbody tr td p {
+  width: 100%;
+  /* Add any additional styles as needed */
+}
 @media (min-width: 1240px) {
   #block11, #block21, #block31,#TitleBlock2 {
-    height: 510px; /* Set the desired height or 'auto' for dynamic height */
+    height: 92vh/*510px;*/ /* Set the desired height or 'auto' for dynamic height */
     /* overflow-y: auto; Enable vertical scrollbar if needed */
   }
   #collectionBlock2{
@@ -330,19 +340,62 @@ p{cursor: pointer}
   }
 }
 
-@media (max-width: 1240px) {.popup-overlay {width: 40%;}#block11, #block21, #block31,#TitleBlock2 {height: 510px;}#collectionBlock2{height: 10%;}#bookBlock2{height: 10%;}#chapterBlock2{height: 74.5%;}}
+@media (max-width: 1240px) {
+  .popup-overlay {width: 40%;}
+  #block11, #block21, #block31,#TitleBlock2 {height:92vh;/*510px;*/}
+  #collectionBlock2{height: 10%;}
+  #bookBlock2{height: 10%;}
+  #chapterBlock2{height: 74.5%;}
+}
 /* Large screens and  (min-width:993px) */
+ /* 800px; */
 @media (min-width: 1616px){
   #block11, #block21, #block31,#TitleBlock2 {
-    height: 800px; 
+    height:92vh;/*800px;*/
   }.popup-overlay {width: 20%;}
   #collectionBlock2{
-    height: 7%;
+    height:7%;
   }
   #bookBlock2{
-    height: 7%;
+    height:7%;
   }
   #chapterBlock2{
-    height: 82%;
+    height:82%;
   }
 }
+/**************************************************/
+.flex-container {
+  display: flex;
+  /*background-color: DodgerBlue;*/
+  flex-direction: row-reverse;
+  }
+
+.flex-container > div {
+  /*background-color: #f1f1f1;*/
+  margin: 10px;
+  padding: 20px;
+  }
+
+
+
+#hadTabbody.dragging {
+  cursor: grabbing;
+}
+.close-btn {
+  content: "x";
+  font-size: 60px;
+  font-weight: bold;
+  color: red;
+}
+span {
+  outline: none;
+  min-width: 30px;
+  display: inline-block;
+}
+#btnSanad,#btnAddAuth,#btnKey {
+  cursor: pointer;
+  font-size:22px;
+}
+
+
+

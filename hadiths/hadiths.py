@@ -42,6 +42,12 @@ def gethadith():
     
     return jsonify(data1 = hadith)
 
+@hadiths_bp.route("/getprevhadithNumber", methods=["POST"])
+def getprevhadithNumber():
+    data = request.json
+    prevhadithno = models.get_HadithNumber(data) 
+    return jsonify({'status': "Success",'prevhadithno':str(prevhadithno)})
+
 @hadiths_bp.route("/getSanad", methods=["POST"])
 def getSanad():
     hadithid = request.form.get('hadithid')
@@ -125,9 +131,12 @@ def submit():
     data = request.json
     mlist = data['moallakaList']
     slist = data['sanadList']
+    klist = data['keywords']
     #update Comments on Sanad and Matn
     x = models.insert_Comments(data)
     
+    #if len(klist)!=0:
+    x = models.insert_Keywords(data['hadith_id'],klist)
 
     #Moallaka chain update
     if len(mlist)!=0:
@@ -163,6 +172,18 @@ def updatechapter():
     x = models.update_Chapter(data)
     return jsonify({'status': "Success"})
 
+@hadiths_bp.route("/updatechapno", methods=["POST"])
+def updatechapno():
+    data = request.json
+    models.update_ChapNo(data)
+    return jsonify({'status': "Success"})
+
+@hadiths_bp.route("/updatehadno", methods=["POST"])
+def updatehadno():
+    data = request.json
+    models.update_HadNo(data)
+    return jsonify({'status': "Success"})
+
 @hadiths_bp.route("/updatehadithchapter", methods=["POST"])
 def updatehadithchapter():
     data = request.json
@@ -193,6 +214,12 @@ def updatecollection():
     x = models.update_Collection(data)
     return jsonify({'status': "Success"})
 
+@hadiths_bp.route("/updatecollno", methods=["POST"])
+def updatecollno():
+    data = request.json
+    models.update_CollNo(data)
+    return jsonify({'status': "Success"})
+
 @hadiths_bp.route("/deletecollection", methods=["POST"])
 def deletecollection():
     data = request.json
@@ -209,6 +236,12 @@ def insertbook():
 def updatebook():
     data = request.json
     x = models.update_Book(data)
+    return jsonify({'status': "Success"})
+
+@hadiths_bp.route("/updatebookno", methods=["POST"])
+def updatebookno():
+    data = request.json
+    models.update_BookNo(data)
     return jsonify({'status': "Success"})
 
 @hadiths_bp.route("/deletebook", methods=["POST"])

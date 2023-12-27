@@ -113,7 +113,7 @@
     <div>
         
         <form  method="post">
-            <div class="w3-center w3-margin-top">
+            <div class="w3-center w3-margin-top flex-container">
 
         <!-----------------------------hadeeth table, comment, sanad, moallaka and Submit---------------->
                 
@@ -128,26 +128,25 @@
                             </thead> 
                         </table>
                         <!-- <h4>الأحاديث</h4> -->
-                        <table class="w3-table w3-bordered" id="hadeeth">
+                        <table class="w3-table w3-bordered" id="hadeeth" >
                             <tbody>
                             {% for h in hadith: %}
                                 <tr>
-                                    <td style="border: 1px solid black; border-collapse: collapse;" contenteditable="True">
+                                    <td style="border: 1px solid black; border-collapse: collapse;" >
                                         <input type="hidden"  id="hadithid" name="hadithid" value="{{h['_id']}}" />
-                                        <input type="number" class="number-txt" name="hadithno"  value="{{h['hadithno']}}" min="0" max="999999" >
-                                        <p><br>{{ h['body_ar']}}</p>
+                                        <p contenteditable="True"><br>{{ h['body_ar']}}</p>
                                     </td>
                                 </tr>
                             {%endfor%}
                             </tbody>
                         </table>
                         
-                        <div id="responseDiv" class="w3-white w3-display-container w3-margin-top">
-                            <table id="responseTab" class="w3-table w3-bordered" >
+                        <div id="responseDiv" style="height: 100%;" >
+                            <table id="responseTab" class="w3-table w3-bordered" style="height: 100%;" >
                                 <tbody>
                                     <tr>
-                                        <td style="width:20%; font-size: 14px; font-weight: bold;">ادخل ملاحضاتك حول متن الحديث</td>
-                                        <td style="width:100%;height: 100%;" colspan="2"><textarea style="width:100%;"
+                                        <td style="font-size: 14px; font-weight: bold;">ادخل ملاحضاتك حول متن الحديث</td>
+                                        <td  colspan="2"><textarea style="width:100%;"
                                             autocomplete="off" 
                                             id="hadeethComment" 
                                             name="hadeethComment" placeholder="ادخل ملاحضاتك حول متن الحديث">
@@ -156,18 +155,15 @@
                                     <tr id="sanaddisplay" style="display:none" >
                                         <th >سند الحديث:</th>
                                         <td style="width:100%;">
-                                            <!-- <div style="overflow-y: auto;" > -->
                                             <table id="chainTable" style="width:100%">   
                                                 <tbody style="width:100%;">
-                                                    <tr style="white-space:nowrap ; word-break: break-all; width: 150px; max-width: 150px;"></tr>
+                                                    <tr style="white-space:nowrap ; word-break: break-all; width: 150px; max-width: 150px;"></tr> 
                                                 </tbody>
                                             </table>
-                                        <!-- </div> -->
                                         </td>
-                                        
                                     </tr>
                                     <tr>
-                                        <td colspan=2><button type='button' id="chkSanad" name="chkSanad" class='add'>أضف سند للحديث</button></td>
+                                        <td colspan=2><button type='button' id="chkSanad" name="chkSanad" class='add'>أضف للسند</button></td>
                                         
                                     </tr>
                                     <tr>
@@ -177,7 +173,6 @@
                                                 <tbody style="width:100%;">
                                                     <tr><th>أضف سند للحديث</th>
                                                         <td>
-                                                            <!-- <button type='button' id="btnSanad" class='add'>+</button> -->
                                                             <div  id="btnDivSanad" >
                                                                 <table  id="tableSanadList" >
                                                                     <tr>
@@ -193,7 +188,7 @@
                                         </td>
                                     </tr>
                                     <tr>
-                                        <td style="width:20%; font-size: 14px; font-weight: bold;">ادخل ملاحضاتك حول سند الحديث</td>
+                                        <td font-size: 14px; font-weight: bold;">ادخل ملاحضاتك حول سند الحديث</td>
                                         <td style="width:100%;height: 100%;" colspan="2">
                                             <textarea style="width:100%;"
                                             autocomplete="off" 
@@ -211,10 +206,8 @@
                                                 </tbody>
                                             </table>
                                         </td>
-                                        <!-- <td style="width:2%;">
-                                            <input type="checkbox" class="form-check-input " id="chkMoallaka" name="chkMoallaka" value="something">
-                                        </td> -->
-                                    </tr><tr ><th colspan=2 > معلقة جديدة   <input type="checkbox" class="form-check-input " id="chkMoallaka" name="chkMoallaka" value="something"></th></tr> 
+                                       
+                                    </tr><tr ><th colspan=2 >أضف سندا أو معلقة  <input type="checkbox" class="form-check-input " id="chkMoallaka" name="chkMoallaka" value="something"></th></tr> 
                                     <tr><td colspan=2 style="white-space:nowrap ; word-break: break-all; width: 150px; max-width: 150px;">
                                         <div style="overflow-x: auto;" >
                                             <table id="addMoalaTable" style="display:none">
@@ -226,6 +219,30 @@
                                             </table>
                                         </div>
                                     </td></tr>
+                                    <tr>
+                                        <td colspan=2><button type='button' id="chKey" name="chKey" class='add'>أضف مفاتيح الكلمات</button></td>
+                                    </tr>
+                                    <tr>
+                                        <td colspan=2 style="white-space:nowrap ; word-break: break-all; width: 150px; max-width: 150px;">
+                                            <div style="overflow-x: auto;" >
+                                                <table id="addKeyTable" style="display:none" >   
+                                                    <tbody style="width:100%;">
+                                                        <tr><th> مفاتيح الكلمات </th>
+                                                            <td>
+                                                                <div  id="btnDivKey">
+                                                                    <table  id="tableKeyList">
+                                                                        <tr>
+                                                                            <td></td>
+                                                                        </tr>
+                                                                    </table>  
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div> 
@@ -239,7 +256,7 @@
         <!--------------------------------- hadeeth with check box with option to add-------->  
                 <div id="block1" class="w3-quarter w3-padding " >
                 <div id="block11" class="w3-card w3-container" style="overflow-y: auto;"><!--style="height:540px;overflow-y: auto;"-->
-                    <table id="AhadithTable" style="width:100%">
+                    <table id="AhadithTable" style="width:100%;border-collapse: collapse;">
                     <thead>
                         <tr>
                         <th style="width: 5%;">
@@ -252,11 +269,15 @@
                     </thead>
                     <tbody id="hadTabbody">
                         {% for h in hadith: %}
-                            <tr><td style="text-align: center; width:5px">{%if h['save_flag'] == True%}<i class="checkmark w3-text-theme" style="font-size: 15px;"></i>{%endif%}</td>
+                            <tr><td style="text-align: center; width:5px">
+                                {%if h['save_flag'] == True%}
+                                    <i class="checkmark w3-text-theme" style="font-size: 15px;"></i>
+                                {% else %}
+                                    <a href="" class="deleteRow" rel="del"><i class="fa fa-minus w3-text-theme" style="font-size:15px"></i></a>
+                                {% endif %}</td>
                                 <td style="text-align: right; white-space:wrap; word-break: break-all; width: 150px; max-width: 150px; " ><a href="" style="text-decoration: none;" >
                                     <input type="hidden"  id="hadithid_card" name="hadithid_card" value="{{h['_id']}}" />
-                                    
-                                    <p>{{ h['body_ar'][:100] + '...' }}</p></a>
+                                    <p>{{ ' ('+h['hadithno']|string+')'+h['body_ar'][:100] + '...' }}</p></a>
                                 </td>
                                 <td style="text-align: left; width:2px;padding-left: 2%; ">
                                     <a href="" rel="edit"><i class="fa fa-edit w3-text-theme" style="font-size:15px"></i></a>
@@ -272,11 +293,12 @@
         <!-------------------------------eof hadeeth with check box---------------------->
             
         <!-- -------------------------Collection, book and chapter Chapter name for adding,editting and selecting----------------------------> 
-                <div id="block2" class="w3-quarter w3-margin-top w3-margin-bottom  " >
+                <!-- <div id="block2" class="w3-quarter w3-margin-top w3-margin-bottom  " > -->
+                <div id="block2" class="w3-quarter w3-padding">
                     <div id="block21" class="w3-container w3-margin-bottom" ><!--style="width:100%;height:540px;"-->
             <!-- -------------------------Collection Option----------------------------------------------> 
                         <div id="collectionBlock2" class="w3-card  w3-margin-bottom"  >
-                            <div class="headerDiv">
+                            <div class="headerDiv" style="width:100%">
                                 <table style="width:100%">
                                     <thead>
                                         <tr>
@@ -303,17 +325,17 @@
                                         {% if coll_id == c[0] %}{% set collchk.flagchecked = True %}
                                             <td style="text-align: right;white-space:wrap; overflow-y:auto; word-break: break-all; width: 150px; max-width: 150px;background-color: rgb(24, 139, 240);color:white" >
                                                 <input type="hidden"  id="collection" name="collection" value="{{c[0]}}" />
-                                                <p > {{ c[1] }}</p>
+                                                <p >({{c[4]}})<span>{{ c[1] }}</span></p>
                                             </td>
                                         {% elif coll_id==None and collchk.flagchecked == False %}{% set collchk.flagchecked = True %}
                                             <td style="text-align: right;white-space:wrap; overflow-y:auto; word-break: break-all; width: 150px; max-width: 150px;background-color: rgb(24, 139, 240);color: white;" >
                                                 <input type="hidden"  id="collection" name="collection" value="{{c[0]}}" />
-                                                <p > {{ c[1] }}</p>
+                                                <p >({{c[4]}})<span>{{ c[1] }}</span></p>
                                             </td>
                                         {% else %}
                                             <td style="text-align: right;white-space:wrap; overflow-y:auto; word-break: break-all; width: 150px; max-width: 150px;" >
                                                 <input type="hidden"  id="collection" name="collection" value="{{c[0]}}" />
-                                                <p > {{ c[1] }}</p>
+                                                <p >({{c[4]}})<span>{{ c[1] }}</span></p>
                                             </td>
                                         {% endif %}
                                             
@@ -330,7 +352,7 @@
                 <!---------------------------------eof Collection title-------------------------------------->
                 <!-- -------------------------Book option----------------------------------------------------> 
                         <div id="bookBlock2" class="w3-card  w3-margin-bottom"   >
-                            <div class="headerDiv">
+                            <div class="headerDiv" style="width:100%">
                             <table style="width:100%">
                                 <thead>
                                     <tr>
@@ -357,17 +379,17 @@
                                         {% if book_id == b[0] %}{% set bookchk.flagchecked = True %}
                                             <td style="text-align: right;white-space:wrap; overflow-y:auto; word-break: break-all; width: 150px; max-width: 150px;background-color: rgb(24, 139, 240);color:white" >
                                                 <input type="hidden"  id="bookHidden" name="bookHidden" value="{{b[0]}}" />
-                                                <p > {{ b[1] }}</p>
+                                                <p >({{b[4]}})<span>{{ b[1] }}</span></p>
                                             </td>
                                         {% elif book_id==None and bookchk.flagchecked == False %}{% set bookchk.flagchecked = True %}
                                             <td style="text-align: right;white-space:wrap; overflow-y:auto; word-break: break-all; width: 150px; max-width: 150px;background-color: rgb(24, 139, 240);color: white;" >
                                                 <input type="hidden"  id="bookHidden" name="bookHidden" value="{{b[0]}}" />
-                                                <p > {{ b[1] }}</p>
+                                                <p >({{b[4]}})<span>{{ b[1] }}</span></p>
                                             </td>
                                         {% else %}
                                             <td style="text-align: right;white-space:wrap; overflow-y:auto; word-break: break-all; width: 150px; max-width: 150px;" >
                                                 <input type="hidden"  id="bookHidden" name="bookHidden" value="{{b[0]}}" />
-                                                <p > {{ b[1] }}</p>
+                                                <p >({{b[4]}})<span>{{ b[1] }}</span></p>
                                             </td>
                                         {% endif %}
                                             
@@ -382,7 +404,7 @@
                 <!----------------------------------eof Book title-------------------------------------->
                 <!-- -------------------------Chapter Option-------------------------------------------------->          
                         <div id="chapterBlock2" class="w3-card  w3-margin-bottom"  >
-                            <div class="headerDiv">
+                            <div class="headerDiv" style="text-align: center;">
                             <table style="width:100%" id="chapterTab">
                                 <thead>
                                     <tr>
@@ -411,17 +433,17 @@
                                     </td>{% if chapter_id==ch[0]  %}{% set fchk.flagchecked = True %}
                                     <td style="text-align: right;white-space:wrap; overflow-y:auto; word-break: break-all; width: 150px; max-width: 150px;background-color: rgb(24, 139, 240);color:white" >
                                         <input type="hidden"  id="chapter" name="chapter" value="{{ch[0]}}" />
-                                        <p > {{ ch[1][0] }}</p>
+                                        <p >({{ch[4]}})<span>{{ ch[1] }}</span></p>
                                     </td>
                                     {% elif chapter_id==None and fchk.flagchecked == False %}{% set fchk.flagchecked = True %}
                                     <td style="text-align: right;white-space:wrap; overflow-y:auto; word-break: break-all; width: 150px; max-width: 150px;background-color: rgb(24, 139, 240);color: white;" >
                                         <input type="hidden"  id="chapter" name="chapter" value="{{ch[0]}}" />
-                                        <p > {{ ch[1][0] }}</p>
+                                        <p >({{ch[4]}})<span>{{ ch[1] }}</span></p>
                                     </td>
                                     {% else %}
                                     <td style="text-align: right;white-space:wrap; overflow-y:auto; word-break: break-all; width: 150px; max-width: 150px;" >
                                         <input type="hidden"  id="chapter" name="chapter" value="{{ch[0]}}" />
-                                        <p > {{ ch[1][0] }}</p>
+                                        <p >({{ch[4]}})<span>{{ ch[1] }}</span></p>
                                     </td>
                                     {% endif %}
                                     <td style="text-align: left; width:2px;padding-left: 2%; "><a href="" rel="edit"><i class="fa fa-edit w3-text-theme" style="font-size:15px"></i></a></td>
@@ -458,8 +480,11 @@
         <!--- ----------------------------Next and Previous Button---------------------------------------------------------->
             <div class= "w3-half" id="button-container">
                 <div id="nav" class="w3-center">
-                <a href="" class="w3-bar-item w3-button w3-hover-theme w3-disabled" style="font-weight:bold" rel="prevbtn">Prev</a>
-                <a href="" class="w3-bar-item w3-button w3-hover-theme" style="font-weight:bold" rel="nxtbtn">Next</a>
+                    <a href="" class="w3-bar-item w3-button w3-hover-theme w3-disabled" style="font-weight:bold; padding: 0px 0px; border: 2px solid rgb(24, 139, 240);" rel="prevbtn">السابق</a>
+                    <a href="" class="w3-bar-item w3-button w3-hover-theme" style="font-weight:bold; padding: 0px 0px; border: 2px solid rgb(24, 139, 240);" rel="nxtbtn">التالي</a>
+                
+                <!-- <a href="" class="w3-bar-item w3-button w3-hover-theme w3-disabled" style="font-weight:bold" rel="prevbtn">Prev</a>
+                <a href="" class="w3-bar-item w3-button w3-hover-theme" style="font-weight:bold" rel="nxtbtn">Next</a> -->
                 </div>
             </div>
         </form>
