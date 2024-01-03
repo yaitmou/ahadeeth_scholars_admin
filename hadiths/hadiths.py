@@ -132,6 +132,7 @@ def submit():
     mlist = data['moallakaList']
     slist = data['sanadList']
     klist = data['keywords']
+    sFlag = data['sanadFlag']
     #update Comments on Sanad and Matn
     x = models.insert_Comments(data)
     
@@ -144,8 +145,7 @@ def submit():
         
         
     #Sanad chain update
-    
-    if(len(slist)!=0):
+    if(sFlag):
         x = models.insert_Sanad(data['hadith_id'],slist)
         
     session['last_modified'] = data['hadith_id']

@@ -332,8 +332,8 @@ def insert_Sanad(id,slist):
         if(ObjectId.is_valid(slist[s])):
             sanad_li.append(ObjectId(slist[s]))
     sanad_li = list(reversed(sanad_li))
+    db.HadithBody.update_one(myquery,{"$unset":{"chain":""}})
     if(len(sanad_li)!=0):
-        db.HadithBody.update_one(myquery,{"$unset":{"chain":""}})
         x = db.HadithBody.update_one(myquery,
             { "$push": { "chain": { "$each": sanad_li } } }) 
         st = x.modified_count
@@ -407,7 +407,8 @@ def update_ChapNo(data):
         if(query):
             
             cur = list(db.HadithChapter.find(query,{'chapterno':1}).sort('chapterno',1))
-            hadno = list(db.HadithBody.find({'chapter':cur[0]['_id']},{"hadithno":1}).sort('hadithno',1))[0]['hadithno']
+            hadno = list(db.HadithBody.find({'chapter':cur[0]['_id']},{"hadithno":1}).sort('hadithno',1))
+            hadno = hadno[0]['hadithno'] if(hadno) else 1
             for doc in cur:
                 if(doc['chapterno']==data['oldchapno']):
                     values = {'$set':{'chapterno':data['chapterno']}}
@@ -671,10 +672,10 @@ def update_BookNo(data):
         if(query):
             cur = list(db.HadithBook.find(query,{'booknumber':1}).sort('booknumber',1))
             cur_first_id = cur[0]['_id']
-            chid = list(db.HadithChapter.find({'book':cur_first_id},{"chapterno":1}).sort('chapterno',1))[0]['_id']
-            hno = list(db.HadithBody.find({'chapter':chid},{"hadithno":1}).sort('hadithno',1))[0]['hadithno']
-            print(data['oldbookno'],data['booknumber'],cur_first_id)
-            print(chid,hno)
+            chid = list(db.HadithChapter.find({'book':cur_first_id},{"chapterno":1}).sort('chapterno',1))
+            chid = chid[0]['_id'] if(chid) else 1
+            hno = list(db.HadithBody.find({'chapter':chid},{"hadithno":1}).sort('hadithno',1))
+            hno = hno[0]['hadithno'] if(hno) else 1
             for doc in cur:
                 if(doc['booknumber']==data['oldbookno']):
                     values = {'$set':{'booknumber':data['booknumber']}}
@@ -737,5 +738,5 @@ def get_HadithNumber(data):
         max_hadith_no = max(had_no)
         
     except Exception as e:
-        print(f"An error has occured : {e}")
+        print(f"An error has occured in get_HadithNumber : {e}")
     return max_hadith_no
