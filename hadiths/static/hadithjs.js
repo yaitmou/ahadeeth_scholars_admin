@@ -981,171 +981,136 @@ $(document).ready(function(){
             event.preventDefault();
             
         }).find('a.active').trigger('click');
+        
     /////////////////nextRecord function//////////////////////////
         function nextRecord(matn,matnid){
+            var lastcol = false;
+            var rw ="";
             btnFlag = 1; //flag for nextbtn/ for prevbtn, btnFlag = 0
-            
             const rlen = rows.length - 1;
+            let exitFlag = false;
             if(currentIndex  == rlen){ //checking end of records in the selected chapter,if so moved to next chapter
-                currentIndex = 0;
-                    
-                let checkedTabList = ['#chapterTabBody','#bookTabBody','#collectionTabBody'];
-                let [trList,tdList,idList] = getCheckedIds(checkedTabList);
-                let [ch, bk, cl] = idList;
-                let [checkedtr, chdbooktr, chdcolltr] = trList;
-                let [checkedtd, chdbooktd, chdcolltd] = tdList ;
-                if (checkedtd.length > 0) {
-                        
-                    //const chid = checkedtd.find('input[type=hidden][name=chapter]').val();
-                    const chid = ch;
-                    var nextrowinchapter = checkedtr.next()
-                    var nextIndex = $(nextrowinchapter).index() + 1;
-                     
-                    while (nextIndex) {
-                        var nextRowCheckbox = nextrowinchapter.find('.deleteRow');
-                        if(nextRowCheckbox.length == 0){
-                            nextrowinchapter.find('td>p').trigger('click');
-                            
-                            $('#chDiv').animate({ scrollTop:  $(nextrowinchapter).position().top  }, 500);
-                            
-                            $('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
-                            break;
-                        }
-                        nextrowinchapter  = nextrowinchapter.next()
-                        nextIndex = $(nextrowinchapter).index() + 1;
-                    }
-                    submitForm(matn,matnid,chid); //comment for testing
-                    var chdhadithtd = $('#hadTabbody td').filter(function() {
-                        return $(this).css('background-color') == chkdBgColor;
-                    });
-                    let hadPNo = ""
-                    if(chdhadithtd.find('p').text()!="") hadPNo = chdhadithtd.find('p').text().match(/\((-?\d+)\)/)[1];
-                    chdhadithtd.find('p').text(" ("+hadPNo+")"+matn.trim().slice(0,100)+ "...")
-                    if(!nextIndex){
-                            //when reach last row
-                            $('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
-                            
-                            //var nextrowinbook = bookchkboxes[0].closest('tr').nextElementSibling
-                            var nextrowinbook = chdbooktr.next()
-                            var nextBookIndex = $(nextrowinbook).index() + 1;
-                            
-                            while (nextBookIndex){
-                                var nextRowbkchk = nextrowinbook.find('.deleteRow');
+                currentIndex = 0;}
+            let checkedTabList = ['#chapterTabBody','#bookTabBody','#collectionTabBody','#hadTabbody'];
+            let [trList,tdList,idList] = getCheckedIds(checkedTabList);
+            let [ch, bk, cl, had] = idList;
+            let [checkedtr, chdbooktr, chdcolltr, chdhadtr] = trList;
+            let [checkedtd, chdbooktd, chdcolltd, chdhadtd] = tdList ;
+            let nextCollIndex =  chdcolltr.index() + 1;
+            let nextrowincoll = chdcolltr;
+            while(nextCollIndex){
+                if(chdcolltd.length>0){
+                    if(chdbooktr.length>0){
+                    let nextBookIndex =  chdbooktr.index() + 1;
+                    let nextrowinbook = chdbooktr;
+                    while(nextBookIndex){
+                        if(chdbooktd.length>0){
+                            if(checkedtr.length>0){
                                 
+                            let nextChapIndex =  checkedtr.index() + 1;
+                            let nextrowinchap = checkedtr;
+                            while(nextChapIndex){
+                                if(checkedtd.length>0){
+                                    let nextHadIndex =  chdhadtr.index() + 1;
+                                    let nextrowinhad = chdhadtr;
+                                    while(nextHadIndex){
+                                        if(chdhadtd.length>0){
+                                            submitForm(matn,matnid,ch);
+                                        }
+                                        nextrowinhad = nextrowinhad.next();
+                                        nextHadIndex = nextrowinhad.index() + 1;
+                                        if(nextHadIndex) {
+                                            var hadnum = Number(chdhadtd.find('p').text().match(/\((-?\d+)\)/)[1])
+                                            chdhadtd.find('p').text("("+hadnum+")"+matn.trim().slice(0,100)+ "...")
+                                            currentIndex = (currentIndex + 1) % rows.length;
+                                            clear_hadithDetails();
+                                            showCurrentRow();
+                                            exitFlag = true;
+                                            break;
+                                        } 
+                                    }
+                                }
+                                if(exitFlag) break; else{
+                                    nextrowinchap = nextrowinchap.next();
+                                    nextChapIndex = nextrowinchap.index() + 1;
+                                    if(nextChapIndex) {
+                                        var nextRowCheckbox = nextrowinchap.find('.deleteRow');
+                                        if(nextRowCheckbox.length == 0){
+                                            nextrowinchap.find('td>p').trigger('click');
+                                            $('#chDiv').animate({ scrollTop:  $(nextrowinchap).position().top  }, 500);
+                                                
+                                            $('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
+                                            exitFlag = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            }
+                        }
+                        if(exitFlag) break; else{
+                            nextrowinbook = nextrowinbook.next();
+                            nextBookIndex = nextrowinbook.index() + 1;
+                            if(nextBookIndex){
+                                var nextRowbkchk = nextrowinbook.find('.deleteRow');
                                 if(nextRowbkchk.length == 0){
                                     nextrowinbook.find('td>p').trigger('click');
                                     var chaptd = $('#chapterTabBody td').filter(function() {
                                         return $(this).css('background-color') == chkdBgColor;
                                     });
                                     if(chaptd.length>0){
-                                    $('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
+                                        exitFlag = true;
                                         break;
                                     }
-                                }
-                                nextrowinbook  = nextrowinbook.next();
-                                //alert($(nextrowinbook).index());
-                                nextBookIndex = $(nextrowinbook).index() + 1;
-                                
-                            }
-                            if(!nextBookIndex){//when reach last row of book
-                                $('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
-                                
-                                
-                                var nextrowincoll = chdcolltr.next();
-                                var nextCollIndex = $(nextrowincoll).index() + 1;
-                                
-                                while (nextCollIndex){
-                                    
-                                    const nextRowcollchk = nextrowincoll.find('.deleteRow');   
-                                    if(nextRowcollchk.length == 0){
-                                        nextrowincoll.find('td>p').trigger('click');
-                                        var bktd = $('#bookTabBody td').filter(function() {
-                                            return $(this).css('background-color') == chkdBgColor;
-                                        });
-                                        if(bktd.length>0){
-                                            break;
-                                        }
-                                        
-                                    }
-                                    nextrowincoll  = nextrowincoll.next();
-                                    nextCollIndex = $(nextrowincoll).index() + 1;
                                     
                                 }
-                                
-                                if(!nextCollIndex){$('#nav a[rel="nxtbtn"]').addClass('w3-disabled');$('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
-                                    currentIndex = rlen
-                                    clear_hadithDetails() 
-                                    hadeethTabClick(matnid)
-                                }
                             }
-                            
+                        }
                     }
-                        
-                        
                 }
-                
-                    
-            }
-            
-            else
-            { //next hadith in the current selected chapter
-                    //save the current record
-                
-                var checkedtd = $('#chapterTabBody td').filter(function() {
-                    return $(this).css('background-color') == chkdBgColor;
-                });
-                if (checkedtd.length > 0) {
-                    const chid = checkedtd.find('input[type=hidden][name=chapter]').val();
-                        
-                    submitForm(matn,matnid,chid);
-                    var chdhadithtd = $('#hadTabbody td').filter(function() {
-                        return $(this).css('background-color') == chkdBgColor;
-                    });var hadnum = Number(chdhadithtd.find('p').text().match(/\((-?\d+)\)/)[1])
-                    chdhadithtd.find('p').text("("+hadnum+")"+matn.trim().slice(0,100)+ "...")
-                    
-                        currentIndex = (currentIndex + 1) % rows.length;
-                        clear_hadithDetails();
-                        showCurrentRow();
+                else{lastcol = true;}
                 }
-                var chdbooktd = $('#bookTabBody td').filter(function() {
-                    return $(this).css('background-color') == chkdBgColor;
-                });
-                var chdcolltd = $('#collectionTabBody td').filter(function() {
-                    return $(this).css('background-color') == chkdBgColor;
-                });
-                let fl = false;
-                const chCount = $('#chapterTabBody tr').length;
-                let cnt = 0
-                $("#chapterTabBody tr").each(function(){
-                    if($(this).find('.checkmark').length==0){cnt = cnt + 1;}
-                })
-                if(cnt == chCount){fl=true;}
-                if(fl == true){
-                    const iele = document.createElement("i");
-                    iele.className = "checkmark w3-text-theme";
-                    iele.style.fontSize = "15px";
-                    if(chdbooktd.closest('tr').find('.checkmark').length<1){
-                        chdbooktd.closest('tr').find('td:eq(0)').append(iele)}}
+                if(exitFlag) 
+                {
+                    break; 
+                }
                 else{
-                    if(chdbooktd.closest('tr').find('.checkmark').length>0){chdbooktd.closest('tr').find('td:eq(0)').html('')}
-                }
-                cnt = 0;fl=false;const colCount = $('#bookTabBody tr').length;
-                
-                $("#bookTabBody tr").each(function(){
-                    if($(this).find('.checkmark').length==0){cnt = cnt + 1;}
-                })
-                
-                if(cnt == colCount){fl=true;}
-                    if(fl == true){
-                        const iele = document.createElement("i");
-                        iele.className = "checkmark w3-text-theme";
-                        iele.style.fontSize = "15px";
-                        if(chdcolltd.closest('tr').find('.checkmark').length<1){
-                            chdcolltd.closest('tr').find('td:eq(0)').append(iele)}}
+                    nextrowincoll = nextrowincoll.next();
+                    nextCollIndex = nextrowincoll.index() + 1;
+                    if(nextCollIndex){
+                        const nextRowcollchk = nextrowincoll.find('.deleteRow');   
+                        if(nextRowcollchk.length == 0){
+                            nextrowincoll.find('td>p').trigger('click');
+                            var bktd = $('#bookTabBody td').filter(function() {
+                                return $(this).css('background-color') == chkdBgColor;
+                            });
+                            var chtd = $('#chapterTabBody td').filter(function() {
+                                return $(this).css('background-color') == chkdBgColor;
+                            });
+                            if(bktd.length>0)
+                            { 
+                                if(chtd.length>0){
+                                    exitFlag = true;
+                                    break;
+                                }
+                                else{
+                                    $('#nav a[rel="nxtbtn"]').trigger('click')
+                                    exitFlag = true;
+                                }
+                            }
+                        }
+                    }
                     else{
-                        if(chdcolltd.closest('tr').find('.checkmark').length>0){chdcolltd.closest('tr').find('td:eq(0)').html('')}
-                    }        
-            }    
+                        $('#nav a[rel="nxtbtn"]').addClass('w3-disabled');$('#nav a[rel="prevbtn"]').removeClass('w3-disabled');
+                        currentIndex = rlen
+                        clear_hadithDetails() 
+                        hadeethTabClick(matnid)
+                        
+                    }
+                }
+                if(exitFlag) break;
+            }
         }
         
         function prevRecord(){
@@ -1312,7 +1277,6 @@ $(document).ready(function(){
                 'moallakaList' : mlist,
                 'matn': matn.trim(),
                 'save_flag' : saveflag,
-                //'hadithno' : hadithnumber,
                 'keywords': keylist,
                 'sanadFlag':isBtnSanadClicked
                 
@@ -2620,7 +2584,7 @@ $(document).ready(function(){
                         contentType: 'application/json',
                         data:JSON.stringify(bookData),
                         success:function(result){console.log("success")
-                        if(ui.item.find('td:eq(1)').css('background-color') == chkdBgColor){alert("hello")
+                        if(ui.item.find('td:eq(1)').css('background-color') == chkdBgColor){
                             ui.item.find('td:eq(1)').css('background-color',"");
                             ui.item.find('td:eq(1) p').trigger('click')}
                     }
@@ -3548,10 +3512,7 @@ $( "#go3" ).on( "click", function() {
         collcontentDivs.addClass("contentDiv").removeClass("expanded");
         bookContentDivs.addClass("expanded").removeClass("contentDiv");
         chapterContentDivs.addClass("contentDiv").removeClass("expanded");
-        //(($(book_div).parent().height() - coll_div.clientHeight + chap_div.clientHeight - 300) / $(book_div).parent().height() * 100) + "vh";
-        //let bkhtOffset = ($(window).width() >= 1616) ? 150 : 120;
-        //bookContentDivs.height(((book_div.parent().height() - coll_div.height() + chap_div.height() - bkhtOffset) / book_div.parent().height()) * 100 + "vh");
-        //bookContentDivs.height(((book_div.parent().height() - bkhtOffset) / book_div.parent().height()) * 100 + "vh");
+        
 
         $("#go3").toggleClass("fa-expand fa-minus").css("fontSize", "10px");
     }
@@ -3597,11 +3558,6 @@ $( "#go3" ).on( "click", function() {
         $("#go3").removeClass( "fa-minus").addClass("fa-expand").css("fontSize", "20px");
       
     }
-    //calculatedHeight=(($(book_div).parent().height() - coll_div.height() + chap_div.height() - bkhtOffset) / ($(book_div).parent().height() )) * 100 + "vh";
-    //bookContentDivs.height(calculatedHeight);
-    //alert(bookContentDivs.height())
-    //let bkhtOffset = ($(window).width() >= 1616) ? 150 : 120;
-    //bookContentDivs.height(((book_div.parent().height() - bkhtOffset) / book_div.parent().height()) * 100 + "vh");
     if($(window).width() >= 1616 && $(window).height() > 1225)
     {
         bookContentDivs.height(((book_div.parent().height()- 300) / book_div.parent().height() ) * 100 + "vh");
