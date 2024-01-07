@@ -449,7 +449,7 @@ def update_HadNo(data):
         print(f"An error occurred: {e}")
     return
 
-def update_HadithChapter(data):
+def update_HadithChapter1(data):
     query = { "_id": ObjectId(data["hadithid"]) }
     newvalues = { "$set": { "chapter": ObjectId(data['chapter']), "flag": 1 } }
     newhadno = 0
@@ -503,6 +503,71 @@ def update_HadithChapter(data):
         st_ch = db.HadithChapter.update_one(query_new,newvalues)
     
     return(st)
+
+def update_HadithChapter(data):
+    query = { "_id": ObjectId(data["hadithid"]) }
+    newvalues = { "$set": { "chapter": ObjectId(data['chapter']), "flag": 1 } }
+    newhadno = 0
+    oldhadno = db.HadithBody.find_one({"_id": ObjectId(data["hadithid"])}, {"hadithno": 1})["hadithno"]
+    hadno = db.HadithBody.find_one({"chapter": ObjectId(data['chapter'])}, {"hadithno": 1}, sort=[('hadithno', -1)])
+    if(hadno):
+        newhadno = hadno["hadithno"]
+        newhadno = newhadno if(oldhadno<newhadno) else newhadno + 1
+    else:
+        book1 = db.HadithChapter.find_one({'_id': ObjectId(data['chapter'])},{'chapterno':1,'book':1})
+        #bkno = db.HadithBook.find_one({'_id':book1['book']},{'booknumber':1})['booknumber']
+        newchno = db.HadithChapter.find_one({"_id":ObjectId(data['chapter'])},{"chapterno":1})["chapterno"]
+        oldchno = db.HadithChapter.find_one({"_id":ObjectId(data['oldchapter'])},{"chapterno":1})["chapterno"]
+        if(newchno > oldchno):
+            all_chaps = db.HadithChapter.find({'$and':[{'book':book1['book']},{'chapterno':{'$lte':newchno,'$gte':oldchno}}]},
+                                        {'_id':1},sort=[('chapterno', 1)])
+            ch = []
+            for c in all_chaps:
+                ch.append(c['_id'])
+                
+            hads = db.HadithBody.find({'$and':[{'chapter':{'$in':ch}},{'hadithno':{'$gte':oldhadno}}]},{'hadithno':1},sort=[('hadithno', -1)])[0]
+            
+            
+        else:
+            all_chaps = db.HadithChapter.find({'$and':[{'book':book1['book']},{'chapterno':{'$lte':oldchno,'$gte':newchno}}]},
+                                        {'_id':1},sort=[('chapterno', 1)])
+            ch = []
+            for c in all_chaps:
+                ch.append(c['_id'])
+            hads = db.HadithBody.find({'chapter':{'$in':ch}},{'hadithno':-1},sort=[('hadithno', 1)])[0]
+        if(hads):
+            newhadno = hads["hadithno"]
+        else:
+            newhadno = 0
+        
+    hData={"oldhadithno":oldhadno,
+           "hadithno":newhadno,
+           "collection":data["collection"]}
+    
+    st = db.HadithBody.update_one(query,newvalues)
+    update_HadNo(hData)
+    chapterCount_new = getHadiths(data['chapter'],None)
+    
+    if(data['oldchapter'].strip()!=""):
+        chapterCount_old = getHadiths(data['oldchapter'],None)
+        query_old = { "_id": ObjectId(data['oldchapter']) }
+        if(len(chapterCount_old)<1):
+            newvalues = { "$set": { "flag": 0 } }
+            st_ch = db.HadithChapter.update_one(query_old,newvalues)
+        else:
+            newvalues = { "$set": { "flag": 1 } }
+            st_ch = db.HadithChapter.update_one(query_old,newvalues)
+    
+    query_new = { "_id": ObjectId(data['chapter']) }
+    if(len(chapterCount_new)<1):
+        newvalues = { "$set": { "flag": 0 } }
+        st_ch = db.HadithChapter.update_one(query_new,newvalues)
+    else:
+        newvalues = { "$set": { "flag": 1 } }
+        st_ch = db.HadithChapter.update_one(query_new,newvalues)
+    
+    return(st)
+
 
 def insert_Hadith(data):
     try:
