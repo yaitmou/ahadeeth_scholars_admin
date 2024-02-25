@@ -76,10 +76,15 @@ def getnarratorinfo():
     narratorid = request.form.get('narratorid')
     
     li =models.getAuthorsInfo(narratorid)
-    
     return json.dumps(li) 
 
-
+@hadiths_bp.route("/deletefromchain", methods=["POST"])
+def deletefromchain():
+    data = request.json
+    slist = data['sanadList']
+    x = models.insert_Sanad(data['hadith_id'],slist)
+    
+    return jsonify({'status': "Success"})
 @hadiths_bp.route("/ahadiths",methods=['GET','POST'])
 def home():
     if not session.get('logged_in'):
@@ -143,8 +148,9 @@ def submit():
     if len(mlist)!=0:
         x = models.insert_Moallakka(data['hadith_id'],mlist)
         
-        
+    #print(sFlag)    
     #Sanad chain update
+    print(data['hadith_id'],slist)
     if(sFlag):
         x = models.insert_Sanad(data['hadith_id'],slist)
         

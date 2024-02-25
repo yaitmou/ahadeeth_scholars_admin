@@ -17,7 +17,10 @@ def about(id):
             'foreignField':"_id",
             'as': "hadith"
         }},
-        {"$unwind":"$hadith"},
+        {"$unwind": {
+            "path": "$hadith",
+            "preserveNullAndEmptyArrays": True  
+        }},
         {"$project":{"narrator_ar":1,"varriation":1,"bio":1,"hadith_id":"$hadith._id","hadith_arbody":"$hadith.body_ar"}}, 
         {'$match': {'_id': ObjectId(id_auth)}}
     ])
@@ -48,7 +51,6 @@ def about(id):
         stud_list= s['student_ar']
     for t in tr:
         teacher_list=t['teacher_ar']
-
 
     return render_template("narrator.html", narrator=base3, teachers = teacher_list, students = stud_list)
 

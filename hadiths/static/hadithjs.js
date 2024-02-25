@@ -43,17 +43,19 @@ $(document).ready(function(){
         const chap_header2 = $(chap_div2).find(".headerDiv");
         
         //synchronous call for getting Narrators list
-        $.ajax({
-            url:"/getnarrator",
-            type:"POST",
-            dataType:'json',
-            async: false,
-            success:function(result){                   
-                narrator_list=result;},
-            error: function(error) {
-                console.log(error);}
-        });
-
+        function getnarrator_details(){
+            $.ajax({
+                url:"/getnarrator",
+                type:"POST",
+                dataType:'json',
+                async: false,
+                success:function(result){                   
+                    narrator_list=result;},
+                error: function(error) {
+                    console.log(error);}
+            });
+        }   
+        getnarrator_details()
         //ajax call to /getSanad for displaying the sanad on the table
         function get_sanad(hadithid)
         {
@@ -68,19 +70,34 @@ $(document).ready(function(){
                     $('#sanaddisplay').css("display",(data.length==0)?"none":""); //for displayng the heading for Sanad chain
                     for (var i= len ;i>=0;i--){
                         var doc = data[i]
-                        $('#chainTable > tbody:last-child').append('<td  id="'+
-                         doc[0] +'"><span class="linkSpan">'+ doc[1]+'</span></td>'); //display narrator name to chaintable
-                        $('#tableSanadList> tbody tr:last-child').append('<td></td>')
+                        
+                         $('#chainTable > tbody:last-child').append('<td   id="'+
+                         doc[0] +'"><span class="linkSpan">'+
+                         doc[1]+'</span></td>'); //display narrator name to chaintable 
+                        
+                        ///
+                        
+                        var td_sanad = $('<td id="'+doc[0] +'" style="position: relative;"></td>');
+                        var div_sanad = $('<div ><span>&nbsp;</span></div>'); 
                         com = getNarratorListtoCombobox("Sanadlist",0,doc[0])
-                        $("#tableSanadList > tbody tr td:last-child").append(com) //display narrator combo for editing (tableSanadList)
-                        com.select2({
+                        div_sanad.append(com)
+                        com.select2({   
+                            tags:true
                         }).on('change',function (){
                             adjustIconMargin($(this));
                         }).on('select2:open',function(){
                             $('.select2-container--above').attr('id','fix');
                             $('#fix').removeClass('select2-container--above').addClass('select2-container--below');
                         });
-                        $("#tableSanadList > tbody tr td:last-child").append('<i id="btnSanad" class="fa fa-plus-circle w3-text-theme" ></i>') //+btn at the end
+                        var close_btn = $('<i id="btnSanadClose" class="fa fa-times-circle" style="font-size:15px; color:red; position: absolute; top: -5px; right: 25px;"></i>');
+                        var add_btn = $('<i id="btnSanad" class="fa fa-plus-circle w3-text-theme" style = "z-index:1;position: absolute; top: 10px;left:-15px"></i>')
+                        td_sanad.append(close_btn)
+                        td_sanad.append(div_sanad)
+                        ///div_sanad.append(add_btn)
+                        td_sanad.append(add_btn)
+                        $('#tableSanadList> tbody tr:last-child').append(td_sanad)
+                        
+                        
                     }
                 },
                 error: function(error) {
@@ -516,6 +533,7 @@ $(document).ready(function(){
                 success:function(result){
                     for (var i= 1 ;i<result.length;i++){
                         var doc = result[i]
+                        console.log(doc)
                         var name = $(".popup-content table tbody tr").find(".data_name")
                         if (doc['narrator_ar']) {name.text(doc['narrator_ar']);name.attr('id',doc['_id']);}
                         else{name.text("No Data")}
@@ -554,6 +572,10 @@ $(document).ready(function(){
             const td = $('.popup-content').find('table tbody tr td[contenteditable="True"]'); 
             setTimeout(function () {td.focus();}, 50);
             td.addClass("w3-edittd");
+        });
+        $("#chainTable").on('click','div>i', function() {
+                
+            
         });
         ///function to save narrator name in popup-overlay 
         $("#saveNarratorName").on('click', function() {
@@ -1250,12 +1272,17 @@ $(document).ready(function(){
             
             if (isBtnSanadClicked){
                 $('[name=input_text2]').each(function() {
+                    
                     if($(this).val()!="0"){
+                        
+                        
                         slist.push($(this).val())
                     }
+                    
                 });
                 
             }
+            
             //get keywordlist
             var keylist= new Array();
             
@@ -1373,6 +1400,7 @@ $(document).ready(function(){
                                     }
                                 }
                             }
+                            getnarrator_details()
                         },   
                         error: function(error) {
                             console.log(error);
@@ -1385,8 +1413,8 @@ $(document).ready(function(){
                     console.log(error);
                     
                 }
-            }); 
-              
+            });  
+               
         }
 ///////////////////EOC//////////////////////////////////
 
@@ -1620,10 +1648,11 @@ $(document).ready(function(){
             isBtnSanadClicked = !isBtnSanadClicked; // Toggle the click state
             if (isBtnSanadClicked) {
                 $("#addSanadTable").css('display','');
-                $("#tableSanadList").find("td").each(function(){
+                $("#tableSanadList").find("td>div").each(function(){
+                    $(this).find('span').find('.selection').css('display', 'block');
                     var selWidth = $(this).find('span').find('.selection').width();
                     var comboWidth = $(this).find('span').width();
-                    $(this).find('i').css('margin-right', (selWidth - comboWidth)+ 10);
+                    $(this).closest('td').find('i.fa-plus-circle').css('margin-right', (selWidth - comboWidth)+ 10);
                 })
             }
             else{
@@ -1647,39 +1676,80 @@ $(document).ready(function(){
             })
             if(flag == 0)
             {
-                
-                com = getNarratorListtoCombobox("Sanadlist",0,0)
                 var tr = $(this).closest('tr');
-                var td = $('<td></td>')
-                td.append(com)
-                com.select2({
+                var td_sanad = $('<td style="position: relative;"></td>');
+                var div_sanad = $('<div ><span>&nbsp;</span></div>'); 
+                com = getNarratorListtoCombobox("Sanadlist",0,0)
+                div_sanad.append(com)
+                com.select2({   
+                    tags:true
                 }).on('change',function (){
-                    //adjustIconMargin($(this));
-                    $(this).closest('td').find('span').css('width', $(this).closest('td').width());
-                    $(this).closest('td').find('i').css('margin-right', 10);
+                    $(this).closest('div').find('span.selection').css('width', 150);
+                    $(this).closest('div').closest('td').find('i.fa-plus-circle').css('margin-right', 10);
                 }).on('select2:open',function(){
                     $('.select2-container--above').attr('id','fix');
                     $('#fix').removeClass('select2-container--above').addClass('select2-container--below');
-                
                 });
-                //td.append('<button type="button" id="btnSanad" class="fa fa-plus" ></button>')
-                td.append('<i id="btnSanad" class="fa fa-plus-circle w3-text-theme" ></i>')
+                var close_btn = $('<i id="btnSanadClose" class="fa fa-times-circle" style="font-size:15px; color:red; position: absolute; top: -5px; right: 25px;"></i>');
+                var add_btn = $('<i id="btnSanad" class="fa fa-plus-circle w3-text-theme" style = "z-index:1;position: absolute; top: 10px;left:-15px"></i>')
+                td_sanad.append(close_btn)
+                td_sanad.append(div_sanad)
+                        ///div_sanad.append(add_btn)
+                td_sanad.append(add_btn)
+                
                 var targetTd = tr.find('td').eq(clickedIndex);
                 if (targetTd.length > 0) {
-                    targetTd.after(td);
+                    targetTd.after(td_sanad);
                 } else {
-                    tr.append(td);
+                    tr.append(td_sanad);
                 }
                 //adjustIconMargin(com);
             }
 
         });
+        $("#tableSanadList").on('click','#btnSanadClose', function() {
+            
+            event.preventDefault();
+            const tdid = $(this).closest('td').attr('id')
+            if(tdid == undefined){$(this).closest('td').remove();}
+            else{
+                $(this).closest('td').remove()
+                let [trList,tdList,idList] = getCheckedIds(['#hadTabbody'])
+                let [matnid] = idList;
+                var slist = new Array();
+                $("#chainTable").find('span').each(function() {
+                    if (tdid == $(this).closest('td').attr('id') )  {
+                        $(this).closest('td').remove();
+                    }
+                    else{
+                    slist.push($(this).closest('td').attr('id'))}
+                });
+                var narrData = {
+                'hadith_id': matnid,
+                'sanadList': slist,
+                'deleted_id': tdid
+                };
+                $.ajax({url:"/deletefromchain",
+                    type:"POST",
+                    contentType: 'application/json',
+                    data:JSON.stringify(narrData),
+                    success:function(result){
+                        console.log(result)
+                    },
+                    error: function (error) {
+                    console.log("AJAX Error in saveNarratorName :", error);
+                    }
+                }); 
+            }
+            
+
+        });
         // Function to adjust the position of the icon element
         function adjustIconMargin(combo){
-            $("#tableSanadList").find("td").each(function(){
+            $("#tableSanadList").find("td>div").each(function(){
                 var selWidth = $(this).find('span').find('.selection').width();
                 var comboWidth = $(this).find('span').width();
-                $(this).find('i').css('margin-right', (selWidth - comboWidth)+ 10);
+                $(this).closest('td').find('fa-plus-circle').css('margin-right', (selWidth - comboWidth)+ 10);
             })
         }
         //function to fill dynamically created combo for adding new node to the Sanad  and Moallakka
@@ -1703,6 +1773,8 @@ $(document).ready(function(){
             } 
             return combo;
         }
+        
+        
         //Add Moallakka + button click
         $(document).on('click','#btnAddAuth',function(){
             $td=$(this).closest('td');
@@ -1711,6 +1783,7 @@ $(document).ready(function(){
             $('#tableMoalList'+cnt+'> tbody tr:last-child').append('<td></td>')
             $("#tableMoalList"+cnt+"> tbody tr td:last-child").append(com)
             com.select2({
+                tags:true
             }).on('change',function (){
                 $(this).closest('td').find('span').css('width', $(this).closest('td').width());
                 
@@ -1729,9 +1802,10 @@ $(document).ready(function(){
             $("#tableMoalList"+moal_count+"> tbody tr td:last-child").append(com)
             
             com.select2({
+                tags:true
             }).on('change',function (){
                 //adjustIconMargin($(this));
-                $(this).closest('td').find('span').css('width', $(this).closest('td').width());
+                //$(this).closest('td').find('span').css('width', $(this).closest('td').width());
             }).on('select2:open',function(){
 
                 $('.select2-container--above').attr('id','fix');
@@ -1758,6 +1832,7 @@ $(document).ready(function(){
                         $("#tableMoalList"+moal_count+"> tbody tr td:last-child").append(com)
                         
                         com.select2({
+                            tags:true
                         }).on('change',function (){
                             //adjustIconMargin($(this));
                             
