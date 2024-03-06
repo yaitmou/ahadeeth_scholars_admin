@@ -182,10 +182,10 @@ def getAuthorsInfo(narratorid):
     li.append(index)
     for narr in narrator:
         narr['_id'] = str(narr["_id"])
-        narr['nstudents'] = json_util.dumps(narr['nstudents'])
-        narr['nteachers'] = json_util.dumps(narr['nteachers'])
-        narr['bio'] = str(narr['bio'])
-        narr['narrator_ar'] = str(narr['narrator_ar'])
+        narr['nstudents'] = json_util.dumps(narr.get('nstudents'))
+        narr['nteachers'] = json_util.dumps(narr.get('nteachers'))
+        narr['bio'] = str(narr.get('bio'))
+        narr['narrator_ar'] = str(narr.get('narrator_ar'))
     li.append(narr)
     return li
 
@@ -328,18 +328,76 @@ def insert_Sanad(id,slist):
     myquery = { "_id" : ObjectId(id) }
     st = 0
     sanad_li = []
+    del_li = []
+    inserted_flag = 0
+    chain = list(db.HadithBody.find(myquery,{'chain':1,}))
     for s in range(0,len(slist)):
         if(ObjectId.is_valid(slist[s])):
             sanad_li.append(ObjectId(slist[s]))
+        else:
+            if s==0:
+                hadiths = ObjectId(id)
+            x = db.HadithAuthors.insert_one({'narrator_ar':slist[s],'teachers':[],'students':[], 'hadiths':hadiths})
+            inserted_flag = 1
+            sanad_li.append(x.inserted_id)
     sanad_li = list(reversed(sanad_li))
+    for ch in chain:
+        for c in ch['chain']:
+            if not any(ObjectId(c) == subch for subch in sanad_li):
+                del_li.append(ObjectId(c))
+    if(del_li):
+        del_AuthorDetails(del_li,id)
+    update_newAuthorDetails(sanad_li,id)
     db.HadithBody.update_one(myquery,{"$unset":{"chain":""}})
     if(len(sanad_li)!=0):
         x = db.HadithBody.update_one(myquery,
             { "$push": { "chain": { "$each": sanad_li } } }) 
-        st = x.modified_count
+        st = x.modified_count 
     return(st)
-
-
+def del_AuthorDetails(del_li,id):
+    for dlist in del_li:
+        chain = list(db.HadithBody.find({'chain': {'$elemMatch': {'$in': [dlist]}}},{'_id':1,'chain':1}))
+        student = []
+        teacher = []
+        curr_student = []
+        curr_teacher = []
+        stud_del = []
+        teacher_del = []
+        for ch in chain:
+            ind = ch['chain'].index(dlist)
+            if(ch['_id']==ObjectId(id)):
+                curr_student = set(ch['chain'][:ind])
+                curr_teacher = set(ch['chain'][ind+1:])
+            else:
+                if(len(ch['chain'][:ind])>0):
+                    student.append(ch['chain'][:ind])
+                if(len(ch['chain'][ind+1:])>0):
+                    teacher.append(ch['chain'][ind+1:])
+        for stud in curr_student:
+            if not any(stud in sub_student for sub_student in student):
+                stud_del.append(stud)
+        for teach in curr_teacher:
+            if not any(teach in sub_teacher for sub_teacher in teacher):
+                teacher_del.append(teach)
+        if(len(stud_del)>0):
+            db.HadithAuthors.update_one(
+                {'_id': dlist},
+                {'$pull': {'students': {'$in': stud_del}}}#,'hadiths':{'$in':[ObjectId(id)]}
+                )
+        if(len(teacher_del)>0):
+            db.HadithAuthors.update_one(
+                {'_id': dlist},
+                {'$pull': {'teachers': {'$in': teacher_del}}}#,'hadiths':{'$in':[ObjectId(id)]}
+                )
+    return
+def update_newAuthorDetails(sanadList,id):
+    for i in sanadList:
+        del_AuthorDetails([i],id)
+        stud_list = sanadList[:sanadList.index(i)]
+        teach_list = sanadList[sanadList.index(i) + 1:]
+        x = db.HadithAuthors.update_one({'_id':i},{'$addToSet':{'teachers':{'$each':teach_list},'students':{'$each':stud_list}}})#,'hadiths':{'$each':[ObjectId(id)]}
+        
+    return
 def insert_Chapter(data):
     try:
         x = db.HadithChapter.insert_one({
