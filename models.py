@@ -330,6 +330,7 @@ def insert_Sanad(id,slist):
     sanad_li = []
     del_li = []
     inserted_flag = 0
+    hadiths = None
     chain = list(db.HadithBody.find(myquery,{'chain':1,}))
     for s in range(0,len(slist)):
         if(ObjectId.is_valid(slist[s])):
